@@ -1,81 +1,81 @@
 ---
 name: freeticket-cli
-description: Usa el CLI oficial de FreeTicket (binario `ft`, npm `@appfreeticket/cli`) para operar un workspace desde la terminal — login con API key, listar y consultar eventos, fechas, tipos de ticket, ventas, planes de membresía, venues, staff e informes, y exportar compradores/suscriptores. Úsala cuando el usuario quiera consultar datos reales de su cuenta FreeTicket, correr `ft <comando>`, automatizar reportes con `--json`/`jq`, configurar la API key/workspace, o cuando otra skill necesite traer datos en vivo del backend B2B v1.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@appfreeticket/cli`) to operate a workspace from the terminal — log in with an API key, list and inspect events, dates, ticket types, sales, membership plans, venues, staff and reports, and export buyers/subscribers. Use it when the user wants real data from their FreeTicket account, to run `ft <command>`, to automate reports with `--json`/`jq`, to configure the API key/workspace, or when another skill needs live data from the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
 
-`ft` es el cliente de terminal de FreeTicket. Consume la **API REST B2B v1** y se
-genera desde su contrato OpenAPI 3.1, así que cada endpoint existe como comando.
-En esta fase **las lecturas funcionan**; las escrituras (crear/editar/borrar)
-están declaradas pero responden `501` (llegan en fase 2).
+`ft` is FreeTicket's terminal client. It consumes the **B2B REST API v1** and is
+generated from its OpenAPI 3.1 contract, so every endpoint exists as a command.
+In this phase **reads work**; writes (create/update/delete) are declared but
+return `501` (shipping in phase 2).
 
-## Cuándo usar esta skill
+## When to use this skill
 
-- El usuario pide datos reales de su cuenta: "¿cuántas ventas llevo?", "lista mis eventos", "exporta los compradores".
-- Hay que correr `ft ...` o automatizar un reporte para `jq`/scripts.
-- Configurar/rotar la API key o cambiar de workspace.
-- Otra skill (p. ej. `freeticket-eventos`) necesita traer datos en vivo para auditar.
+- The user wants real data: "how many sales do I have?", "list my events", "export buyers".
+- You need to run `ft ...` or automate a report for `jq`/scripts.
+- Configure/rotate the API key or switch workspace.
+- Another skill (e.g. `freeticket-eventos`) needs live data to audit.
 
-## Setup (una vez)
+## Setup (once)
 
 ```bash
-# instalar (Node ≥ 20)
-npm install -g @appfreeticket/cli      # o: npx @appfreeticket/cli whoami
+# install (Node >= 20)
+npm install -g @appfreeticket/cli      # or: npx @appfreeticket/cli whoami
 
-# la API key se emite en el backend (lado servidor), se muestra UNA sola vez:
-#   pnpm api:key tu-email@dominio.com   →   ft_live_xxxxx
+# the API key is issued on the backend (server side), shown ONCE:
+#   pnpm api:key your-email@domain.com   ->   ft_live_xxxxx
 
-ft login --key ft_live_xxxxx           # guarda y verifica la key
-ft whoami                              # usuario + workspaces accesibles
+ft login --key ft_live_xxxxx           # stores and verifies the key
+ft whoami                              # user + accessible workspaces
 ```
 
-La config vive en `~/.freeticket/config.json` (permisos `0600`). Precedencia:
-**flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > archivo > defaults**.
-`FT_API_URL` por defecto es `https://admin.appfreeticket.com` (sin `/api/v1`).
+Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
+**flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > file > defaults**.
+`FT_API_URL` defaults to `https://admin.appfreeticket.com` (without `/api/v1`).
 
-## Comandos
+## Commands
 
-| Comando | Qué hace | Rol mínimo |
+| Command | What it does | Min role |
 |---|---|---|
-| `ft login --key <key>` | Guarda y verifica la API key | VIEWER |
-| `ft whoami` | Usuario activo + workspaces | VIEWER |
-| `ft config` · `ft logout` | Ver config (key enmascarada) · borrar key | — |
-| `ft events list` · `get <id>` | Eventos del workspace | VIEWER |
-| `ft ticket-types list` · `get <id>` | Tipos de ticket (`--event-date-id`) | VIEWER |
-| `ft sales list` · `get <id>` | Ventas (`--status`) | STAFF |
-| `ft plans list` · `get <id>` | Planes de membresía | VIEWER |
+| `ft login --key <key>` | Store and verify the API key | VIEWER |
+| `ft whoami` | Active user + workspaces | VIEWER |
+| `ft config` · `ft logout` | Show config (masked key) · clear key | — |
+| `ft events list` · `get <id>` | Workspace events | VIEWER |
+| `ft ticket-types list` · `get <id>` | Ticket types (`--event-date-id`) | VIEWER |
+| `ft sales list` · `get <id>` | Sales (`--status`) | STAFF |
+| `ft plans list` · `get <id>` | Membership plans | VIEWER |
 | `ft venues list` · `get <id>` | Venues | VIEWER |
-| `ft staff list` | Staff del workspace | ADMIN |
+| `ft staff list` | Workspace staff | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
-| `ft reports export buyers\|subscribers` | Exporta compradores / suscriptores | ADMIN |
+| `ft reports export buyers\|subscribers` | Export buyers / subscribers | ADMIN |
 
-Flags comunes en todos: `--json` (salida cruda para `jq`), `--workspace <id>`
-(otro workspace), y en listados `--limit <n>` (1–100, default 20) + `--cursor <id>`.
+Common flags on all: `--json` (raw output for `jq`), `--workspace <id>`
+(another workspace), and on lists `--limit <n>` (1–100, default 20) + `--cursor <id>`.
 
-## Reglas de salida (para automatizar)
+## Output rules (for automation)
 
-- **`--json`** imprime JSON crudo en *stdout*. Úsalo siempre que vayas a parsear.
-- **Paginación por cursor:** los listados devuelven `page.nextCursor`; la pista
-  `--cursor <id>` se imprime en *stderr*, así `--json` queda limpio en *stdout*.
-- **Errores:** formato `{ error: { code, message, details } }`; exit code `1`.
-  `401`=key inválida, `403`=rol insuficiente, `404`=fuera del workspace, `501`=escritura no implementada.
-- **Dinero:** entero en la moneda del recurso (`currency`, normalmente `COP`).
-- **Fechas:** ISO 8601 UTC.
+- **`--json`** prints raw JSON to *stdout*. Always use it when parsing.
+- **Cursor pagination:** lists return `page.nextCursor`; the `--cursor <id>` hint
+  is printed to *stderr*, so `--json` stays clean on *stdout*.
+- **Errors:** shape `{ error: { code, message, details } }`; exit code `1`.
+  `401`=invalid key, `403`=insufficient role, `404`=outside workspace, `501`=write not implemented.
+- **Money:** integer in the resource currency (`currency`, usually `COP`).
+- **Dates:** ISO 8601 UTC.
 
-## Recetas
+## Recipes
 
 ```bash
-# KPIs del último mes en JSON
+# last-month KPIs as JSON
 ft reports summary --period 30d --json
 
-# ventas confirmadas, contar e iterar páginas
+# confirmed sales, count and iterate pages
 ft sales list --status CONFIRMED --json --limit 100
 
-# exportar compradores de otro workspace
+# export buyers from another workspace
 ft reports export buyers --workspace <orgId> --json > buyers.json
 ```
 
-Tabla de comandos completa, errores y paginación: ver `references/commands.md`.
-Si necesitas auditar estos datos y recomendar mejoras, combina con la skill
-`freeticket-eventos`.
+Full command table, errors and pagination: see `references/commands.md`.
+To audit this data and recommend improvements, combine with the
+`freeticket-eventos` skill.

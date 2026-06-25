@@ -1,29 +1,29 @@
-# Referencia de comandos `ft`
+# `ft` command reference
 
-Detalle de cada comando del CLI de FreeTicket. La base de la API es
-`FT_API_URL` + `/api/v1`. Todo es **tenant-scoped**: solo ves recursos del
-workspace activo; un id de otro workspace devuelve `404` (anti-IDOR).
+Detail for every command in the FreeTicket CLI. The API base is `FT_API_URL` +
+`/api/v1`. Everything is **tenant-scoped**: you only see resources of the active
+workspace; an id from another workspace returns `404` (anti-IDOR).
 
-## Autenticación y config
+## Auth and config
 
-| Comando | Descripción |
+| Command | Description |
 |---|---|
-| `ft login --key ft_live_…` | Guarda la key en `~/.freeticket/config.json` (0600) y la valida contra `/me`. |
-| `ft whoami` | Imprime el usuario dueño de la key, su rol y `workspaces[]` accesibles. |
-| `ft config` | Muestra config efectiva con la key enmascarada. |
-| `ft logout` | Borra la key del archivo de config. |
+| `ft login --key ft_live_…` | Stores the key in `~/.freeticket/config.json` (0600) and validates it against `/me`. |
+| `ft whoami` | Prints the key's owning user, their role and accessible `workspaces[]`. |
+| `ft config` | Shows the effective config with the key masked. |
+| `ft logout` | Removes the key from the config file. |
 
-La key actúa como su usuario dueño, **con su mismo rol**. Nunca se guarda en
-claro en el backend (solo su `sha-256`); el prefijo visible es `ft_live_`.
+The key acts as its owning user, **with that user's role**. It is never stored in
+plaintext on the backend (only its `sha-256`); the visible prefix is `ft_live_`.
 
 ## Roles
 
-Jerarquía: `SUPER_ADMIN > ADMIN > STAFF > VIEWER`. Cada endpoint exige un rol
-mínimo; insuficiente → `403`.
+Hierarchy: `SUPER_ADMIN > ADMIN > STAFF > VIEWER`. Each endpoint requires a
+minimum role; insufficient → `403`.
 
-## Lecturas
+## Reads
 
-| Comando | Flags propios | Rol |
+| Command | Own flags | Role |
 |---|---|---|
 | `ft events list` | `--limit` `--cursor` | VIEWER |
 | `ft events get <id>` | — | VIEWER |
@@ -35,22 +35,22 @@ mínimo; insuficiente → `403`.
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
-| `ft reports export buyers` | `--json` (recomendado) | ADMIN |
-| `ft reports export subscribers` | `--json` (recomendado) | ADMIN |
+| `ft reports export buyers` | `--json` (recommended) | ADMIN |
+| `ft reports export subscribers` | `--json` (recommended) | ADMIN |
 
-## Flags globales
+## Global flags
 
-| Flag | Efecto |
+| Flag | Effect |
 |---|---|
-| `--json` | Salida JSON cruda en stdout (parseable). Sin él, salida legible. |
-| `--workspace <orgId>` | Ejecuta el comando contra otro workspace accesible (espeja `X-Workspace-Id`). |
-| `--limit <n>` | Tamaño de página en listados, 1–100 (default 20). |
-| `--cursor <id>` | Página siguiente; el valor sale en la pista `page.nextCursor`. |
+| `--json` | Raw JSON output to stdout (parseable). Without it, human-readable output. |
+| `--workspace <orgId>` | Run the command against another accessible workspace (mirrors `X-Workspace-Id`). |
+| `--limit <n>` | Page size on lists, 1–100 (default 20). |
+| `--cursor <id>` | Next page; the value comes from the `page.nextCursor` hint. |
 
-## Paginación
+## Pagination
 
-Los listados devuelven `{ data: [...], page: { nextCursor } }`. Si `nextCursor`
-no es nulo hay más resultados:
+Lists return `{ data: [...], page: { nextCursor } }`. If `nextCursor` is not null
+there are more results:
 
 ```bash
 first=$(ft sales list --json --limit 100)
@@ -58,25 +58,25 @@ cursor=$(echo "$first" | jq -r '.page.nextCursor // empty')
 [ -n "$cursor" ] && ft sales list --json --limit 100 --cursor "$cursor"
 ```
 
-## Errores
+## Errors
 
-Formato uniforme y exit code `1`:
+Uniform shape and exit code `1`:
 
 ```json
 { "error": { "code": "FORBIDDEN", "message": "...", "details": {} } }
 ```
 
-| HTTP | Significado | Acción |
+| HTTP | Meaning | Action |
 |---|---|---|
-| `401` | Key ausente/inválida/revocada | Re-emitir la key y `ft login` de nuevo. |
-| `403` | Rol insuficiente para el endpoint | Pedir una key de un usuario con rol superior. |
-| `404` | Recurso fuera del workspace activo | Verificar `--workspace` / `ft whoami`. |
-| `501` | Escritura no implementada (fase 2) | Las mutaciones aún no están disponibles. |
+| `401` | Key missing/invalid/revoked | Re-issue the key and `ft login` again. |
+| `403` | Insufficient role for the endpoint | Use a key from a higher-role user. |
+| `404` | Resource outside the active workspace | Check `--workspace` / `ft whoami`. |
+| `501` | Write not implemented (phase 2) | Mutations are not available yet. |
 
-## Convenciones de datos
+## Data conventions
 
-- **Dinero:** entero en la moneda del recurso (`currency`, normalmente `COP`).
-  No asumas decimales; usa el campo `currency` para formatear.
-- **Fechas:** ISO 8601 en **UTC**. La hora local de un evento depende de su zona
-  horaria (`timezone` IANA en la fecha del evento), no del UTC crudo.
-- **camelCase:** los DTOs de la API son camelCase aunque la DB sea snake_case.
+- **Money:** integer in the resource currency (`currency`, usually `COP`). Don't
+  assume decimals; use the `currency` field to format.
+- **Dates:** ISO 8601 in **UTC**. An event's local time depends on its time zone
+  (IANA `timezone` on the event date), not the raw UTC.
+- **camelCase:** API DTOs are camelCase even though the DB is snake_case.

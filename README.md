@@ -2,10 +2,10 @@
 
 # FreeTicket Agent Skills
 
-**Skills para que tu agente opere y haga crecer FreeTicket.**
+**Skills that let your agent operate and grow FreeTicket.**
 
-Skills instalables con [`npx skills`](https://skills.sh) para Claude Code y
-agentes compatibles.
+Installable with [`npx skills`](https://skills.sh) for Claude Code and compatible
+agents.
 
 [![license](https://img.shields.io/badge/license-MIT-07C2BA.svg)](./LICENSE)
 
@@ -15,30 +15,34 @@ agentes compatibles.
 
 ## Skills
 
-| Skill | Qué hace |
+| Skill | What it does |
 |---|---|
-| [`freeticket-cli`](./skills/freeticket-cli) | Maneja el CLI oficial `ft` (`@appfreeticket/cli`): login con API key, listar/consultar eventos, ventas, tickets, membresías, venues, staff e informes, y exportar compradores — con `--json` para automatizar. |
-| [`freeticket-eventos`](./skills/freeticket-eventos) | Asesor de eventos y comunidad: aplica el lenguaje de marca (español neutro) y las reglas reales del producto, y **audita eventos con datos en vivo** (vía `ft`) para recomendar mejoras de venta y retención. |
+| [`freeticket-cli`](./skills/freeticket-cli) | Drive the official `ft` CLI (`@appfreeticket/cli`): log in with an API key, list/inspect events, sales, tickets, memberships, venues, staff and reports, and export buyers — with `--json` for automation. |
+| [`freeticket-eventos`](./skills/freeticket-eventos) | Event & community advisor: applies FreeTicket's brand voice and real product rules, and **audits events with live data** (via `ft`) to recommend sales and retention improvements. |
 
-Las dos se componen: `freeticket-eventos` usa `freeticket-cli` para traer datos
-reales antes de auditar.
+The two compose: `freeticket-eventos` uses `freeticket-cli` to pull real data
+before auditing.
 
-## Instalación
+> **Language note:** the skill instructions are in English for global reuse, but
+> the buyer-facing copy `freeticket-eventos` produces is in **neutral Spanish** —
+> FreeTicket is a LATAM (Colombia-first) ticketing platform.
+
+## Install
 
 ```bash
-# una skill
+# one skill
 npx skills add AppFreeticket/agent-skills@freeticket-cli
 npx skills add AppFreeticket/agent-skills@freeticket-eventos
 
-# o explorar
-npx skills find freeticket
+# list what's in the repo
+npx skills add AppFreeticket/agent-skills -l
 ```
 
-Las skills se instalan en `~/.claude/skills/` (global) o en `.claude/skills/`
-del proyecto. El agente carga `name` + `description` y abre el cuerpo cuando la
-tarea coincide (progressive disclosure).
+Skills install into `~/.claude/skills/` (global) or the project's `.claude/skills/`.
+The agent loads `name` + `description` and opens the body when the task matches
+(progressive disclosure).
 
-## Estructura
+## Structure
 
 ```
 agent-skills/
@@ -49,15 +53,15 @@ agent-skills/
     └── freeticket-eventos/
         ├── SKILL.md
         └── references/
-            ├── lenguaje.md      # voz de marca, copy neutro
-            └── auditoria.md     # traer datos con ft + heurísticas + comunidad
+            ├── language.md     # brand voice, neutral-Spanish copy
+            └── audit.md        # pull data with ft + heuristics + community
 ```
 
-## Relacionado
+## Related
 
-- CLI: [`@appfreeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binario `ft`)
-- API B2B v1: contrato OpenAPI 3.1 en `GET /api/v1/openapi.json`
+- CLI: [`@appfreeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binary `ft`)
+- B2B API v1: OpenAPI 3.1 contract at `GET /api/v1/openapi.json`
 
-## Licencia
+## License
 
 [MIT](./LICENSE) © FreeTicket
