@@ -38,6 +38,26 @@ and a URL, opens your browser, and once you approve it stores the session in
 backend-issued API key required. The `--key ft_live_…` flag stays for headless
 CI where a browser isn't available.
 
+### Authentication policy (agents: follow exactly)
+
+When a command fails with `No API key configured` (or `Invalid… API key`), the
+**only** correct action is to start the device flow — the end user logs in
+themselves through their own browser. There is **no backend-issued key per user**.
+
+1. Run `ft login` (no `--key`). It prints a short code + URL and opens the
+   user's browser.
+2. **Show the user the code and URL** from that output and ask them to approve
+   in the browser. The command keeps polling and finishes on its own once they do.
+3. After `✓ Session saved`, retry the original command. The session persists in
+   `~/.freeticket/config.json` (per machine, all projects) — log in once, reuse
+   everywhere.
+
+**Never** ask the user for an `ft_live_…` key, never invent one, and never tell
+them to pass `--key`. The `--key` / `FT_API_KEY` path is **only** for headless CI
+with no browser, and only when the user has already supplied a key themselves.
+If `ft login` can't open a browser in your environment, print the code + URL and
+tell the user to run `ft login` in their own terminal, then continue.
+
 Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 **flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > file > defaults**.
 `FT_API_URL` defaults to `https://admin.appfreeticket.com` (without `/api/v1`).
