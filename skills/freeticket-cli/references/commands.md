@@ -1,8 +1,10 @@
 # `ft` command reference
 
-Detail for every command in the FreeTicket CLI. The API base is `FT_API_URL` +
-`/api/v1`. Everything is **tenant-scoped**: you only see resources of the active
-workspace; an id from another workspace returns `404` (anti-IDOR).
+Detail for every command in the FreeTicket CLI. Most commands hit the **B2B v1**
+contract (`FT_API_URL` + `/api/v1`) and are **tenant-scoped**: you only see
+resources of the active workspace; an id from another workspace returns `404`
+(anti-IDOR). The `ft admin …` commands are the exception — a separate, cross-tenant
+contract (`/api/admin`) with its own auth (see the Admin section below).
 
 ## Auth and config
 
@@ -35,8 +37,41 @@ minimum role; insufficient → `403`.
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
+| `ft reports reconciliation` | `--from` `--to` (req), `--match` `--provider` `--page` `--page-size` | ADMIN |
 | `ft reports export buyers` | `--json` (recommended) | ADMIN |
 | `ft reports export subscribers` | `--json` (recommended) | ADMIN |
+| `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider` → CSV | ADMIN |
+
+`reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE` (pago
+sin factura) · `MISSING_CUFE` (factura sin timbre DIAN) · `AMOUNT_MISMATCH`
+(monto MP ≠ venta) · `MISSING_PAYMENT`.
+
+## Admin (`ft admin …`) — separate contract `/api/admin`
+
+A **second contract**, not `/api/v1`. It is **cross-tenant** (not workspace-scoped)
+and uses a different auth: a **SUPER_ADMIN better-auth session**, not an API key.
+Set it before any `ft admin` command (MVP — a revocable service token replaces
+this, see free-admin#157):
+
+```bash
+export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
+```
+
+| Command | Own flags | Role |
+|---|---|---|
+| `ft admin me` | — | SUPER_ADMIN |
+| `ft admin workspaces list` | `--status` `--q` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin workspaces get <id>` | — | SUPER_ADMIN |
+| `ft admin users list` | `--q` `--role` `--workspace` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin users get <id>` | — | SUPER_ADMIN |
+| `ft admin plans list` · `get <id>` | `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin feature-flags list` | — (no pagination) | SUPER_ADMIN |
+| `ft admin audit-log list` | `--actor` `--action` `--from` `--to` `--limit` `--cursor` | SUPER_ADMIN |
+
+Read-only first pass. Writes (workspaces suspend/restore/patch, platform-plans
+create/patch, feature-flags put, impersonate) are not exposed yet. Without
+`FT_ADMIN_SESSION` the command fails fast with a clear message. A missing/expired
+session returns `401`; a non-SUPER_ADMIN session returns `403`.
 
 ## Global flags
 
