@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in with an API key, list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues and staff; publish events; cancel/refund sales; run the CFO financial reconciliation (Mercado Pago vs sale vs Siigo invoice); and export any list or report to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues and staff; publish events; cancel/refund sales; run the CFO financial reconciliation (Mercado Pago vs sale vs Siigo invoice); and export any list or report to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -26,12 +26,17 @@ mirrors what the web app does — anything you can do on the page, you can do he
 # install (Node >= 20)
 npm install -g @freeticket/cli      # or: npx @freeticket/cli whoami
 
-# the API key is issued on the backend (server side), shown ONCE:
-#   pnpm api:key your-email@domain.com   ->   ft_live_xxxxx
-
-ft login --key ft_live_xxxxx           # stores and verifies the key
+ft login                               # browser device flow: prints a code,
+                                       # opens the browser, you approve, done.
+                                       # CI/automation: ft login --key ft_live_xxxxx
 ft whoami                              # user + accessible workspaces
 ```
+
+`ft login` uses the OAuth 2.0 Device Authorization Grant: it shows a short code
+and a URL, opens your browser, and once you approve it stores the session in
+`~/.freeticket/config.json`. Anyone with a FreeTicket account can log in — no
+backend-issued API key required. The `--key ft_live_…` flag stays for headless
+CI where a browser isn't available.
 
 Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 **flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > file > defaults**.
@@ -41,7 +46,7 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 
 | Command | What it does | Min role |
 |---|---|---|
-| `ft login --key <key>` | Store and verify the API key | VIEWER |
+| `ft login` | Browser login (device flow); `--key <key>` for CI | VIEWER |
 | `ft whoami` | Active user + workspaces | VIEWER |
 | `ft config` · `ft logout` | Show config (masked key) · clear key | — |
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle | VIEWER read / ADMIN write |
