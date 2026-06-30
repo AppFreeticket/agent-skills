@@ -1,8 +1,10 @@
 # `ft` command reference
 
-Detail for every command in the FreeTicket CLI. The API base is `FT_API_URL` +
-`/api/v1`. Everything is **tenant-scoped**: you only see resources of the active
-workspace; an id from another workspace returns `404` (anti-IDOR).
+Detail for every command in the FreeTicket CLI. Most commands hit the **B2B v1**
+contract (`FT_API_URL` + `/api/v1`) and are **tenant-scoped**: you only see
+resources of the active workspace; an id from another workspace returns `404`
+(anti-IDOR). The `ft admin …` commands are the exception — a separate, cross-tenant
+contract (`/api/admin`) with its own auth (see the Admin section below).
 
 ## Auth and config
 
@@ -35,8 +37,75 @@ minimum role; insufficient → `403`.
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
+| `ft reports reconciliation` | `--from` `--to` (req), `--match` `--provider` `--page` `--page-size` | ADMIN |
 | `ft reports export buyers` | `--json` (recommended) | ADMIN |
 | `ft reports export subscribers` | `--json` (recommended) | ADMIN |
+| `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider` → CSV | ADMIN |
+
+`reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE` (pago
+sin factura) · `MISSING_CUFE` (factura sin timbre DIAN) · `AMOUNT_MISMATCH`
+(monto MP ≠ venta) · `MISSING_PAYMENT`.
+
+Any list also accepts `--csv` (CSV on stdout, columns = the table columns).
+
+## Writes
+
+Mutations take a JSON body via `--data` (inline `'{"k":1}'` or `@file.json`).
+`delete` confirms interactively unless `--yes` (and auto-aborts when stdin isn't
+a TTY, so it's safe in pipelines). The body shape is the request schema of the
+matching endpoint in the OpenAPI contract — when unsure, check the spec, don't guess.
+
+| Command | Args / body | Role |
+|---|---|---|
+| `ft events create` | `--data` (event create schema) | ADMIN |
+| `ft events update <id>` | `--data` (partial) | ADMIN |
+| `ft events delete <id>` | `--yes` to skip confirm | ADMIN |
+| `ft events publish <id>` | — | ADMIN |
+| `ft event-dates list <eventId>` | — | VIEWER |
+| `ft event-dates create <eventId>` | `--data` | ADMIN |
+| `ft event-dates update <eventId> <dateId>` | `--data` | ADMIN |
+| `ft event-dates delete <eventId> <dateId>` | `--yes` | ADMIN |
+| `ft ticket-types create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft plans create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft sales cancel <id>` | — | ADMIN |
+| `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial) | ADMIN |
+| `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
+| `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
+
+## Admin (`ft admin …`) — separate contract `/api/admin`
+
+A **second contract**, not `/api/v1`. It is **cross-tenant** (not workspace-scoped)
+and uses a different auth: a **SUPER_ADMIN better-auth session**, not an API key.
+Set it before any `ft admin` command (MVP — a revocable service token replaces
+this, see free-admin#157):
+
+```bash
+export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
+```
+
+| Command | Own flags | Role |
+|---|---|---|
+| `ft admin me` | — | SUPER_ADMIN |
+| `ft admin workspaces list` | `--status` `--q` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin workspaces get <id>` | — | SUPER_ADMIN |
+| `ft admin users list` | `--q` `--role` `--workspace` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin users get <id>` | — | SUPER_ADMIN |
+| `ft admin workspaces create` | `--data` | SUPER_ADMIN |
+| `ft admin workspaces update <id>` | `--data` | SUPER_ADMIN |
+| `ft admin workspaces suspend <id>` | `--yes` to skip confirm | SUPER_ADMIN |
+| `ft admin workspaces restore <id>` | — | SUPER_ADMIN |
+| `ft admin users update <id>` | `--data` | SUPER_ADMIN |
+| `ft admin plans list` · `get <id>` · `create` · `update <id>` | `--data` (create/update) | SUPER_ADMIN |
+| `ft admin feature-flags list` | — (no pagination) | SUPER_ADMIN |
+| `ft admin feature-flags set <key>` | `--data` (`{"scope","scopeId?","enabled"}`) | SUPER_ADMIN |
+| `ft admin audit-log list` | `--actor` `--action` `--from` `--to` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin impersonate` | `--data` (`{"targetUserId","workspaceId?"}`) | SUPER_ADMIN |
+| `ft admin impersonate-stop` | — | SUPER_ADMIN |
+
+Without `FT_ADMIN_SESSION` the command fails fast with a clear message. A
+missing/expired session returns `401`; a non-SUPER_ADMIN session returns `403`.
+Admin lists also accept `--csv`.
 
 ## Global flags
 
@@ -71,7 +140,7 @@ Uniform shape and exit code `1`:
 | `401` | Key missing/invalid/revoked | Re-issue the key and `ft login` again. |
 | `403` | Insufficient role for the endpoint | Use a key from a higher-role user. |
 | `404` | Resource outside the active workspace | Check `--workspace` / `ft whoami`. |
-| `501` | Write not implemented (phase 2) | Mutations are not available yet. |
+| `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |
 
 ## Data conventions
 
