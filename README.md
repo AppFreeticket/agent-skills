@@ -17,7 +17,7 @@ agents.
 
 | Skill | What it does |
 |---|---|
-| [`freeticket-cli`](./skills/freeticket-cli) | Drive the official `ft` CLI (`@appfreeticket/cli`): log in with an API key, list/inspect events, sales, tickets, memberships, venues, staff and reports, and export buyers — with `--json` for automation. |
+| [`freeticket-cli`](./skills/freeticket-cli) | Drive the official `ft` CLI (`@freeticket/cli`): log in with an API key, list/inspect events, sales, tickets, memberships, venues, staff and reports, and export buyers — with `--json` for automation. |
 | [`freeticket-eventos`](./skills/freeticket-eventos) | Event & community advisor: applies FreeTicket's brand voice and real product rules, and **audits events with live data** (via `ft`) to recommend sales and retention improvements. |
 
 The two compose: `freeticket-eventos` uses `freeticket-cli` to pull real data
@@ -59,7 +59,7 @@ agent-skills/
 
 ## Related
 
-- CLI: [`@appfreeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binary `ft`)
+- CLI: [`@freeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binary `ft`)
 - B2B API v1: OpenAPI 3.1 contract at `GET /api/v1/openapi.json`
 
 ## License

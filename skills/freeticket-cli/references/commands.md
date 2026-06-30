@@ -46,6 +46,33 @@ minimum role; insufficient → `403`.
 sin factura) · `MISSING_CUFE` (factura sin timbre DIAN) · `AMOUNT_MISMATCH`
 (monto MP ≠ venta) · `MISSING_PAYMENT`.
 
+Any list also accepts `--csv` (CSV on stdout, columns = the table columns).
+
+## Writes
+
+Mutations take a JSON body via `--data` (inline `'{"k":1}'` or `@file.json`).
+`delete` confirms interactively unless `--yes` (and auto-aborts when stdin isn't
+a TTY, so it's safe in pipelines). The body shape is the request schema of the
+matching endpoint in the OpenAPI contract — when unsure, check the spec, don't guess.
+
+| Command | Args / body | Role |
+|---|---|---|
+| `ft events create` | `--data` (event create schema) | ADMIN |
+| `ft events update <id>` | `--data` (partial) | ADMIN |
+| `ft events delete <id>` | `--yes` to skip confirm | ADMIN |
+| `ft events publish <id>` | — | ADMIN |
+| `ft event-dates list <eventId>` | — | VIEWER |
+| `ft event-dates create <eventId>` | `--data` | ADMIN |
+| `ft event-dates update <eventId> <dateId>` | `--data` | ADMIN |
+| `ft event-dates delete <eventId> <dateId>` | `--yes` | ADMIN |
+| `ft ticket-types create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft plans create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft sales cancel <id>` | — | ADMIN |
+| `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial) | ADMIN |
+| `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
+| `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
+
 ## Admin (`ft admin …`) — separate contract `/api/admin`
 
 A **second contract**, not `/api/v1`. It is **cross-tenant** (not workspace-scoped)
@@ -64,14 +91,21 @@ export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
 | `ft admin workspaces get <id>` | — | SUPER_ADMIN |
 | `ft admin users list` | `--q` `--role` `--workspace` `--limit` `--cursor` | SUPER_ADMIN |
 | `ft admin users get <id>` | — | SUPER_ADMIN |
-| `ft admin plans list` · `get <id>` | `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin workspaces create` | `--data` | SUPER_ADMIN |
+| `ft admin workspaces update <id>` | `--data` | SUPER_ADMIN |
+| `ft admin workspaces suspend <id>` | `--yes` to skip confirm | SUPER_ADMIN |
+| `ft admin workspaces restore <id>` | — | SUPER_ADMIN |
+| `ft admin users update <id>` | `--data` | SUPER_ADMIN |
+| `ft admin plans list` · `get <id>` · `create` · `update <id>` | `--data` (create/update) | SUPER_ADMIN |
 | `ft admin feature-flags list` | — (no pagination) | SUPER_ADMIN |
+| `ft admin feature-flags set <key>` | `--data` (`{"scope","scopeId?","enabled"}`) | SUPER_ADMIN |
 | `ft admin audit-log list` | `--actor` `--action` `--from` `--to` `--limit` `--cursor` | SUPER_ADMIN |
+| `ft admin impersonate` | `--data` (`{"targetUserId","workspaceId?"}`) | SUPER_ADMIN |
+| `ft admin impersonate-stop` | — | SUPER_ADMIN |
 
-Read-only first pass. Writes (workspaces suspend/restore/patch, platform-plans
-create/patch, feature-flags put, impersonate) are not exposed yet. Without
-`FT_ADMIN_SESSION` the command fails fast with a clear message. A missing/expired
-session returns `401`; a non-SUPER_ADMIN session returns `403`.
+Without `FT_ADMIN_SESSION` the command fails fast with a clear message. A
+missing/expired session returns `401`; a non-SUPER_ADMIN session returns `403`.
+Admin lists also accept `--csv`.
 
 ## Global flags
 
@@ -106,7 +140,7 @@ Uniform shape and exit code `1`:
 | `401` | Key missing/invalid/revoked | Re-issue the key and `ft login` again. |
 | `403` | Insufficient role for the endpoint | Use a key from a higher-role user. |
 | `404` | Resource outside the active workspace | Check `--workspace` / `ft whoami`. |
-| `501` | Write not implemented (phase 2) | Mutations are not available yet. |
+| `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |
 
 ## Data conventions
 
