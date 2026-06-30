@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in with an API key, list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues and staff; publish events; cancel/refund sales; run the CFO financial reconciliation (Mercado Pago vs sale vs Siigo invoice); and export any list or report to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in with an API key, list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues and staff; publish events; cancel/refund sales; run the CFO financial reconciliation (Mercado Pago vs sale vs Siigo invoice); and export any list or report to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -159,6 +159,42 @@ does what it's best at.
 
 `match_status`: `OK` · `MISSING_INVOICE` (pago sin factura) · `MISSING_CUFE`
 (factura sin timbre DIAN) · `AMOUNT_MISMATCH` (monto MP ≠ venta) · `MISSING_PAYMENT`.
+
+## Feedback & suggestions
+
+When the user wants something the CLI doesn't do, finds a command clunky, or has
+an improvement idea — **capture it, don't let it drop**. There is no feedback API
+(and we don't invent one); the channel is a **GitHub issue** on the right repo,
+filed with `gh`.
+
+Classify first, then file where it belongs:
+
+| The feedback is about… | Repo | Label |
+|---|---|---|
+| A command that exists but is awkward/buggy, or a CLI UX idea | `AppFreeticket/freeticket-cli` | `feedback` |
+| A capability that needs a **new endpoint** (not in the contract yet) | `AppFreeticket/free-admin` | `contract`, `feedback` |
+| Skill wording, a missing recipe, wrong/unclear docs | `AppFreeticket/agent-skills` | `feedback` |
+
+```bash
+gh issue create --repo AppFreeticket/freeticket-cli \
+  --title "<short summary>" --label feedback \
+  --body "**Context:** what the user was doing
+**Wish / friction:** <the user's own words — don't paraphrase the signal away>
+**Why it matters:** <impact>
+
+Reported via the freeticket-cli skill."
+```
+
+Then **give the user the issue URL** so they can track it.
+
+- **Vague or strategic feedback** ("esto debería ser más rápido", "me gustaría
+  poder…") → don't file raw. Hand it to **`ai-architect`** first; it owns the
+  roadmap and turns it into a concrete, well-placed backlog item (and knows
+  whether it's a CLI, contract, or skill change).
+- **`gh` missing or not authed** → draft the title + body anyway and give the
+  user the ready-to-paste text plus the repo's new-issue URL.
+
+Always preserve the user's wording in the issue — that's the signal worth keeping.
 
 Full command table, errors and pagination: see `references/commands.md`.
 To audit this data and recommend improvements, combine with the
