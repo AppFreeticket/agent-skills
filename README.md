@@ -48,6 +48,11 @@ not tied to one vendor. Use them in any AI coding tool or assistant:
 
 - **Native skill support** (auto-loaded): Claude Code, Cursor, Windsurf, Cline,
   and any agent that reads a `skills/` directory — install with `npx skills add …`.
+- **OpenAI Codex / Cursor / any AGENTS.md-based agent:** point the agent at the
+  `SKILL.md` (or reference it from your `AGENTS.md`), e.g.
+  `See skills/freeticket-cli/SKILL.md for how to drive the ft CLI.` The agent
+  reads it as context and runs the `npx @freeticket/cli@latest` commands from the
+  terminal — no plugin needed.
 - **Anything else** (ChatGPT, Claude.ai, Gemini, Copilot Chat, v0, Bolt, Lovable…):
   paste the relevant `SKILL.md` into the chat as context. The CLI runs the same
   everywhere via `npx @freeticket/cli@latest <command>` — no install, no lock-in.
