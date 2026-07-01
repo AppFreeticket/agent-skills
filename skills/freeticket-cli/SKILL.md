@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, CFO reconciliation); and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, CFO reconciliation); and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -17,7 +17,7 @@ mirrors what the web app does — anything you can do on the page, you can do he
 - The user wants real data: "how many sales do I have?", "list my events", "export buyers".
 - The user wants to **change** something: "create an event", "publish it", "refund sale X", "raise a ticket-type price", "suspend a tenant".
 - You need to run `ft ...` or automate a report/mutation for `jq`/scripts.
-- Configure/rotate the API key or switch workspace.
+- Manage the session (`ft login`/`logout`/`config`) or switch workspace.
 - Another skill (e.g. `freeticket-eventos`) needs live data to audit or an action to perform.
 
 ## Setup (once)
@@ -38,6 +38,10 @@ npm install -g @freeticket/cli@latest && ft whoami
 > `npx @freeticket/cli@latest <command>`** — use the `npx …@latest` form unless
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
+>
+> This skill documents **`ft` ≥ 0.7.0**. A globally-installed `ft` that's behind
+> prints an `⚠ Update available` line on *stderr*; when you see it, tell the user
+> to run `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
 
 `ft login` uses the OAuth 2.0 Device Authorization Grant: it shows a short code
 and a URL, opens your browser, and once you approve it stores the session in
@@ -47,7 +51,7 @@ CI where a browser isn't available.
 
 ### Authentication policy (agents: follow exactly)
 
-When a command fails with `No API key configured` (or `Invalid… API key`), the
+When a command fails with `Not logged in` (or `Your session is invalid…`), the
 **only** correct action is to start the device flow — the end user logs in
 themselves through their own browser. There is **no backend-issued key per user**.
 
@@ -75,7 +79,7 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 |---|---|---|
 | `ft login` | Browser login (device flow); `--key <key>` for CI | VIEWER |
 | `ft whoami` | Active user + workspaces | VIEWER |
-| `ft config` · `ft logout` | Show config (masked key) · clear key | — |
+| `ft config` · `ft logout` | Show config (masked session) · log out | — |
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle | VIEWER read / ADMIN write |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
@@ -105,15 +109,22 @@ unless `--yes`.
 ### Superadmin (`ft admin …`) — cross-tenant, separate contract
 
 Superadmin commands hit a **different contract** (`/api/admin`) with **different
-auth**: a SUPER_ADMIN better-auth session, *not* an API key. Export the session
-token first (MVP — a service token is coming, see free-admin#157):
+auth**: a SUPER_ADMIN better-auth session, *not* an API key. Save it once with
+`ft admin login` — it validates against `/api/admin/me` before storing (MVP — a
+service token is coming, see free-admin#157):
 
 ```bash
-export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
+# copy the `better-auth.session_token` cookie from an authenticated admin browser session
+ft admin login --session <better-auth.session_token>   # validates + stores (0600)
+ft admin me                                            # confirm identity
 ```
+
+`FT_ADMIN_SESSION` still works for CI/headless. Clear the stored session with
+`ft admin logout`; inspect it masked with `ft admin config`.
 
 | Command | Purpose |
 |---|---|
+| `ft admin login --session <token>` · `logout` · `config` | Save (validated) · clear · show masked admin session |
 | `ft admin me` | Current superadmin identity |
 | `ft admin workspaces list\|get\|create\|update\|suspend\|restore` | Tenants (`--status`, `--q`); `suspend` confirms unless `--yes` |
 | `ft admin users list\|get\|update <id>` | Global users (`--q`, `--role`, `--workspace`) |
@@ -126,11 +137,16 @@ Admin lists also take `--csv`. Writes take `--data <json>`.
 
 ## Output rules (for automation)
 
-- **`--json`** prints raw JSON to *stdout*. Always use it when parsing.
+- **`--json`** prints raw JSON to *stdout*. Always use it when parsing. On
+  **lists it's the data array only** — for pagination from stdout, use `--raw`,
+  which emits the `{ data, page }` envelope (`page.nextCursor`/`hasMore`).
 - **Cursor pagination:** lists return `page.nextCursor`; the `--cursor <id>` hint
-  is printed to *stderr*, so `--json` stays clean on *stdout*.
+  is printed to *stderr*, so `--json` stays clean on *stdout*. `--all`
+  auto-paginates every page.
+- **Empty `--csv`** still emits the header row for curated lists, so a
+  zero-result export keeps its schema.
 - **Errors:** shape `{ error: { code, message, details } }`; exit code `1`.
-  `401`=invalid key, `403`=insufficient role, `404`=outside workspace,
+  `401`=invalid/expired session, `403`=insufficient role, `404`=outside workspace,
   `422`=validation (the `details[]` say which field).
 - **Writes:** pass the body with `--data` (inline JSON or `@file.json`). On
   validation errors the CLI prints each offending `path: message`.

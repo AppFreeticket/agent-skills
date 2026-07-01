@@ -10,13 +10,14 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 
 | Command | Description |
 |---|---|
-| `ft login --key ft_live_…` | Stores the key in `~/.freeticket/config.json` (0600) and validates it against `/me`. |
-| `ft whoami` | Prints the key's owning user, their role and accessible `workspaces[]`. |
-| `ft config` | Shows the effective config with the key masked. |
-| `ft logout` | Removes the key from the config file. |
+| `ft login` | Browser device flow: mints a session, stores it in `~/.freeticket/config.json` (0600), validates against `/me`. |
+| `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
+| `ft whoami` | Prints the session's owning user, their role and accessible `workspaces[]`. |
+| `ft config` | Shows the effective config with the credential masked. |
+| `ft logout` | Logs out — removes the stored session from the config file. |
 
-The key acts as its owning user, **with that user's role**. It is never stored in
-plaintext on the backend (only its `sha-256`); the visible prefix is `ft_live_`.
+The credential acts as its owning user, **with that user's role**. A CI key is
+never stored in plaintext on the backend (only its `sha-256`); prefix `ft_live_`.
 
 ## Roles
 
@@ -94,15 +95,19 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 
 A **second contract**, not `/api/v1`. It is **cross-tenant** (not workspace-scoped)
 and uses a different auth: a **SUPER_ADMIN better-auth session**, not an API key.
-Set it before any `ft admin` command (MVP — a revocable service token replaces
+Save it once with `ft admin login` (MVP — a revocable service token replaces
 this, see free-admin#157):
 
 ```bash
-export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
+# copy the `better-auth.session_token` cookie from an authenticated admin browser session
+ft admin login --session <better-auth.session_token>   # validates vs /api/admin/me, stores 0600
 ```
+
+`FT_ADMIN_SESSION` still works for CI/headless.
 
 | Command | Own flags | Role |
 |---|---|---|
+| `ft admin login` · `logout` · `config` | `login --session <token>` (validated); `config` shows it masked | SUPER_ADMIN |
 | `ft admin me` | — | SUPER_ADMIN |
 | `ft admin workspaces list` | `--status` `--q` `--limit` `--cursor` | SUPER_ADMIN |
 | `ft admin workspaces get <id>` | — | SUPER_ADMIN |
@@ -120,28 +125,30 @@ export FT_ADMIN_SESSION=<better-auth.session_token cookie of a SUPER_ADMIN>
 | `ft admin impersonate` | `--data` (`{"targetUserId","workspaceId?"}`) | SUPER_ADMIN |
 | `ft admin impersonate-stop` | — | SUPER_ADMIN |
 
-Without `FT_ADMIN_SESSION` the command fails fast with a clear message. A
-missing/expired session returns `401`; a non-SUPER_ADMIN session returns `403`.
-Admin lists also accept `--csv`.
+Without an admin session (`ft admin login` or `FT_ADMIN_SESSION`) the command
+fails fast with a clear message. A missing/expired session returns `401`; a
+non-SUPER_ADMIN session returns `403`. Admin lists also accept `--csv`.
 
 ## Global flags
 
 | Flag | Effect |
 |---|---|
-| `--json` | Raw JSON output to stdout (parseable). Without it, human-readable output. |
+| `--json` | Raw JSON to stdout (parseable). On **lists = data array only**; use `--raw` for the paginated envelope. |
+| `--raw` | On lists: the full `{ data, page }` envelope (`page.nextCursor`/`hasMore`) for scripted pagination. |
 | `--workspace <orgId>` | Run the command against another accessible workspace (mirrors `X-Workspace-Id`). |
 | `--limit <n>` | Page size on lists, 1–100 (default 20). |
-| `--cursor <id>` | Next page; the value comes from the `page.nextCursor` hint. |
+| `--cursor <id>` | Next page; the value comes from the `page.nextCursor` hint. `--all` auto-paginates. |
 
 ## Pagination
 
-Lists return `{ data: [...], page: { nextCursor } }`. If `nextCursor` is not null
-there are more results:
+Lists return `{ data: [...], page: { nextCursor } }`. `--json` prints just the
+`data` array; use **`--raw`** to read `page.nextCursor` from stdout (or `--all`
+to fetch every page automatically):
 
 ```bash
-first=$(ft sales list --json --limit 100)
+first=$(ft sales list --raw --limit 100)
 cursor=$(echo "$first" | jq -r '.page.nextCursor // empty')
-[ -n "$cursor" ] && ft sales list --json --limit 100 --cursor "$cursor"
+[ -n "$cursor" ] && ft sales list --raw --limit 100 --cursor "$cursor"
 ```
 
 ## Errors
@@ -154,8 +161,8 @@ Uniform shape and exit code `1`:
 
 | HTTP | Meaning | Action |
 |---|---|---|
-| `401` | Key missing/invalid/revoked | Re-issue the key and `ft login` again. |
-| `403` | Insufficient role for the endpoint | Use a key from a higher-role user. |
+| `401` | Session missing/invalid/expired | Run `ft login` again (CI: refresh the token). |
+| `403` | Insufficient role for the endpoint | Log in as a higher-role user. |
 | `404` | Resource outside the active workspace | Check `--workspace` / `ft whoami`. |
 | `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |
 
