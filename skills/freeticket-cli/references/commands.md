@@ -29,13 +29,15 @@ minimum role; insufficient → `403`.
 | `ft events get <id>` | — | VIEWER |
 | `ft ticket-types list` | `--event-date-id <id>` `--limit` `--cursor` | VIEWER |
 | `ft ticket-types get <id>` | — | VIEWER |
-| `ft sales list` | `--status PENDING\|CONFIRMED\|CANCELLED\|REFUNDED\|ABANDONED` `--limit` `--cursor` | STAFF |
+| `ft sales list` | `--status PENDING\|CONFIRMED\|CANCELLED\|REFUNDED\|ABANDONED` `--channel WEB\|MOBILE\|POS\|ADMIN` `--event <id>` `--event-date <id>` `--reference <ref>` `--buyer <q>` `--from <iso>` `--to <iso>` `--limit` `--cursor` | STAFF |
 | `ft sales get <id>` | — | STAFF |
 | `ft plans list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
-| `ft reports export buyers` | `--json` (recommended) | ADMIN |
+| `ft reports inventory` | `--event <id>` `--event-date <id>` `--from <iso>` `--to <iso>` `--include-drafts` `--group-by ticketType\|date\|event` | VIEWER |
+| `ft reports export buyers` | one row per sale · `--status` `--event <id>` `--event-date <id>` `--from <iso>` `--to <iso>` `--json` | ADMIN |
+| `ft reports export attendees` | one row per ticket · same filters as `buyers` | ADMIN |
 | `ft reports export subscribers` | `--json` (recommended) | ADMIN |
 
 ## Global flags

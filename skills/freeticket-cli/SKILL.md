@@ -43,12 +43,13 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft config` · `ft logout` | Show config (masked key) · clear key | — |
 | `ft events list` · `get <id>` | Workspace events | VIEWER |
 | `ft ticket-types list` · `get <id>` | Ticket types (`--event-date-id`) | VIEWER |
-| `ft sales list` · `get <id>` | Sales (`--status`) | STAFF |
+| `ft sales list` · `get <id>` | Sales (`--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to`) | STAFF |
 | `ft plans list` · `get <id>` | Membership plans | VIEWER |
 | `ft venues list` · `get <id>` | Venues | VIEWER |
 | `ft staff list` | Workspace staff | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
-| `ft reports export buyers\|subscribers` | Export buyers / subscribers | ADMIN |
+| `ft reports inventory` | Capacity/sold/reserved/available (`--event` `--event-date` `--from` `--to` `--group-by`) | VIEWER |
+| `ft reports export buyers\|attendees\|subscribers` | Export buyers (per sale) / attendees (per ticket) / subscribers | ADMIN |
 
 Common flags on all: `--json` (raw output for `jq`), `--workspace <id>`
 (another workspace), and on lists `--limit <n>` (1–100, default 20) + `--cursor <id>`.
@@ -74,6 +75,9 @@ ft sales list --status CONFIRMED --json --limit 100
 
 # export buyers from another workspace
 ft reports export buyers --workspace <orgId> --json > buyers.json
+
+# tickets left to sell per event (one aggregated call, no per-sale fan-out)
+ft reports inventory --group-by event --json | jq '.[] | {eventName, available}'
 ```
 
 Full command table, errors and pagination: see `references/commands.md`.
