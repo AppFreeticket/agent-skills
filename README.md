@@ -41,6 +41,19 @@ prompt and applies it — here, that means knowing how to drive the `ft` CLI, wh
 FreeTicket's product rules are, and how to write copy in the right voice. They
 turn a general agent into one that can actually operate your FreeTicket workspace.
 
+### Works with any AI tool
+
+These are plain markdown following the [Agent Skills spec](https://agentskills.io/specification) —
+not tied to one vendor. Use them in any AI coding tool or assistant:
+
+- **Native skill support** (auto-loaded): Claude Code, Cursor, Windsurf, Cline,
+  and any agent that reads a `skills/` directory — install with `npx skills add …`.
+- **Anything else** (ChatGPT, Claude.ai, Gemini, Copilot Chat, v0, Bolt, Lovable…):
+  paste the relevant `SKILL.md` into the chat as context. The CLI runs the same
+  everywhere via `npx @freeticket/cli@latest <command>` — no install, no lock-in.
+
+The only requirement is a terminal where the agent (or you) can run `npx`.
+
 ---
 
 ## Skills Overview

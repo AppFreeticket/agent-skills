@@ -23,14 +23,21 @@ mirrors what the web app does — anything you can do on the page, you can do he
 ## Setup (once)
 
 ```bash
-# install (Node >= 20)
-npm install -g @freeticket/cli      # or: npx @freeticket/cli whoami
-
-ft login                               # browser device flow: prints a code,
+# No install needed (Node >= 20). Always pin @latest so you never hit a stale
+# npx cache or an old global build:
+npx @freeticket/cli@latest login       # browser device flow: prints a code,
                                        # opens the browser, you approve, done.
-                                       # CI/automation: ft login --key ft_live_xxxxx
-ft whoami                              # user + accessible workspaces
+                                       # CI/automation: … login --key ft_live_xxxxx
+npx @freeticket/cli@latest whoami      # user + accessible workspaces
+
+# Optional global install for a short `ft` alias:
+npm install -g @freeticket/cli@latest && ft whoami
 ```
+
+> Throughout this skill, **`ft <command>` is shorthand for
+> `npx @freeticket/cli@latest <command>`** — use the `npx …@latest` form unless
+> the CLI is installed globally. Pinning `@latest` matters: a user on an older
+> version (e.g. before the device-flow login) breaks otherwise.
 
 `ft login` uses the OAuth 2.0 Device Authorization Grant: it shows a short code
 and a URL, opens your browser, and once you approve it stores the session in
@@ -44,8 +51,8 @@ When a command fails with `No API key configured` (or `Invalid… API key`), the
 **only** correct action is to start the device flow — the end user logs in
 themselves through their own browser. There is **no backend-issued key per user**.
 
-1. Run `ft login` (no `--key`). It prints a short code + URL and opens the
-   user's browser.
+1. Run `npx @freeticket/cli@latest login` (no `--key`). It prints a short code +
+   URL and opens the user's browser.
 2. **Show the user the code and URL** from that output and ask them to approve
    in the browser. The command keeps polling and finishes on its own once they do.
 3. After `✓ Session saved`, retry the original command. The session persists in
