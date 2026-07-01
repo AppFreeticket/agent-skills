@@ -31,20 +31,28 @@ minimum role; insufficient → `403`.
 | `ft events get <id>` | — | VIEWER |
 | `ft ticket-types list` | `--event-date-id <id>` `--limit` `--cursor` | VIEWER |
 | `ft ticket-types get <id>` | — | VIEWER |
-| `ft sales list` | `--status PENDING\|CONFIRMED\|CANCELLED\|REFUNDED\|ABANDONED` `--limit` `--cursor` | STAFF |
+| `ft sales list` | `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` `--limit` `--cursor` | STAFF |
 | `ft sales get <id>` | — | STAFF |
+| `ft sales tickets <id>` | — (individual tickets/attendees of a sale) | STAFF |
+| `ft tickets access <code>` | — (access status; does not admit) | STAFF |
 | `ft plans list` · `get <id>` | `--limit` `--cursor` | VIEWER |
+| `ft plans subscribers <id>` | — (subscribers/members of a plan) | VIEWER |
+| `ft discounts list` | `--event` `--active true\|false` `--limit` `--cursor` | ADMIN |
+| `ft webhooks list` | `--limit` `--cursor` | ADMIN |
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
+| `ft reports by-event` | `--from` `--to` `--status` | VIEWER |
+| `ft reports timeseries` | `--interval day\|week\|month` (req), `--from` `--to` `--event` | VIEWER |
+| `ft reports inventory` | `--event-id` `--event-date-id` `--from` `--to` `--include-drafts` `--group-by ticketType\|date\|event` | VIEWER |
 | `ft reports reconciliation` | `--from` `--to` (req), `--match` `--provider` `--page` `--page-size` | ADMIN |
-| `ft reports export buyers` | `--json` (recommended) | ADMIN |
+| `ft reports export buyers` · `attendees` | `--event` `--event-date` `--from` `--to` `--status` → CSV | ADMIN |
 | `ft reports export subscribers` | `--json` (recommended) | ADMIN |
 | `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider` → CSV | ADMIN |
 
-`reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE` (pago
-sin factura) · `MISSING_CUFE` (factura sin timbre DIAN) · `AMOUNT_MISMATCH`
-(monto MP ≠ venta) · `MISSING_PAYMENT`.
+`reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE`
+(payment without invoice) · `MISSING_CUFE` (invoice without DIAN stamp) ·
+`AMOUNT_MISMATCH` (MP amount ≠ sale) · `MISSING_PAYMENT`.
 
 Any list also accepts `--csv` (CSV on stdout, columns = the table columns).
 
@@ -68,8 +76,17 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft ticket-types create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft plans create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
+| `ft sales create` | `--data` (`{buyer:{name,email,phone?}, items:[{ticketTypeId,quantity}], channel?, comp?, notes?}`) | ADMIN |
 | `ft sales cancel <id>` | — | ADMIN |
 | `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial) | ADMIN |
+| `ft tickets checkin <code>` | — (idempotent; re-running never double-admits) | STAFF |
+| `ft tickets resend <code>` | — (resends the sale's confirmation email/QR) | ADMIN |
+| `ft subscriptions cancel <id>` | — (idempotent; keeps the original cancel date) | ADMIN |
+| `ft discounts create` | `--data` (`{code, type PERCENT\|FIXED, value, eventId?, maxUses?, startsAt?, endsAt?}`) | ADMIN |
+| `ft discounts update <id>` | `--data` (`{active?, value?, maxUses?, startsAt?, endsAt?}`) | ADMIN |
+| `ft discounts delete <id>` | `--yes` to skip confirm | ADMIN |
+| `ft webhooks create` | `--data` (`{url, events[], secret?}`) — returns `signingSecret` once | ADMIN |
+| `ft webhooks delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
 | `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
 

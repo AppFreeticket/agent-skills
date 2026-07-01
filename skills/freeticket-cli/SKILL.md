@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues and staff; publish events; cancel/refund sales; run the CFO financial reconciliation (Mercado Pago vs sale vs Siigo invoice); and export any list or report to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, CFO reconciliation); and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, configure the API key/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -79,13 +79,22 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle | VIEWER read / ADMIN write |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
-| `ft sales list\|get\|cancel\|refund` | Sales (`--status`); `refund --data` for partial | STAFF read / ADMIN action |
+| `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
+| `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
+| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data` for partial) | ADMIN |
+| `ft sales tickets <id>` | List the individual tickets/attendees of a sale | STAFF |
+| `ft tickets access\|checkin\|resend <code>` | Door: read access status · admit (idempotent) · resend QR email | STAFF read / ADMIN resend |
 | `ft plans list\|get\|create\|update\|delete` | Membership plans | ADMIN write |
+| `ft plans subscribers <id>` | List a plan's subscribers/members | VIEWER |
+| `ft subscriptions cancel <id>` | Cancel a subscription | ADMIN |
+| `ft discounts list\|create\|update\|delete` | Discount codes / coupons (`--event` `--active`) | ADMIN |
+| `ft webhooks list\|create\|delete` | Webhook endpoints, HMAC-signed delivery | ADMIN |
 | `ft venues list\|get\|create\|update\|delete` | Venues | ADMIN write |
 | `ft staff list\|create\|set-role` | Workspace staff (`set-role --data '{"role":"…"}'`) | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
-| `ft reports reconciliation` | CFO: cruce Mercado Pago ↔ venta ↔ factura Siigo (`--from` `--to`, `--match`, `--provider`) | ADMIN |
-| `ft reports export buyers\|subscribers\|reconciliation` | Export buyers / subscribers / reconciliación (CSV) | ADMIN |
+| `ft reports by-event\|timeseries\|inventory` | Revenue/tickets by event · over time (`--interval`) · capacity/availability | VIEWER |
+| `ft reports reconciliation` | CFO: cross-check Mercado Pago ↔ sale ↔ Siigo invoice (`--from` `--to`, `--match`, `--provider`) | ADMIN |
+| `ft reports export buyers\|attendees\|subscribers\|reconciliation` | Export to CSV (buyers/attendees take `--event` `--event-date` `--from` `--to` `--status`) | ADMIN |
 
 Common flags on all: `--json` (raw output for `jq`), `--workspace <id>`
 (another workspace). Lists also take `--limit <n>` (1–100, default 20),
@@ -140,31 +149,59 @@ ft sales list --status CONFIRMED --json --limit 100
 # export buyers from another workspace
 ft reports export buyers --workspace <orgId> --json > buyers.json
 
-# CFO: descuadres del mes (pagos sin factura, montos que no cuadran, etc.)
+# CFO: this month's mismatches (payments without invoice, amounts that don't add up, etc.)
 ft reports reconciliation --from 2026-06-01 --to 2026-06-30 --json \
   | jq '[.[] | select(.match_status != "OK")]'
 
-# bajar la conciliación completa a CSV para contabilidad
-ft reports export reconciliation --from 2026-06-01 --to 2026-06-30 > conciliacion.csv
+# full reconciliation to CSV for accounting
+ft reports export reconciliation --from 2026-06-01 --to 2026-06-30 > reconciliation.csv
 
-# cualquier lista a CSV (planillas, contabilidad, backups)
-ft sales list --status CONFIRMED --csv > ventas.csv
-ft events list --csv > eventos.csv
+# any list to CSV (spreadsheets, accounting, backups)
+ft sales list --status CONFIRMED --csv > sales.csv
+ft events list --csv > events.csv
 
-# crear un evento desde un archivo y publicarlo
+# create an event from a file and publish it
 ft events create --data @event.json --json | jq -r '.id' | xargs ft events publish
 
-# editar precio de un ticket-type (PATCH parcial)
+# edit a ticket-type price (partial PATCH)
 ft ticket-types update tt_123 --data '{"price": 50000}'
 
-# reembolso parcial de una venta
+# partial refund of a sale
 ft sales refund sale_123 --data '{"amount": 20000}'
 
-# invitar staff y asignar rol
+# invite staff and assign a role
 ft staff create --data '{"email":"ana@org.com","role":"STAFF"}'
 ft staff set-role usr_123 --data '{"role":"ADMIN"}'
 
-# superadmin: suspender un tenant (pide confirmación; --yes para scripts)
+# door access control: check status, then admit (idempotent)
+ft tickets access TC-ABC123 --json
+ft tickets checkin TC-ABC123        # retrying never double-admits
+ft tickets resend TC-ABC123         # resends the confirmation email with the QR
+
+# create a comp (courtesy) sale and list its tickets
+ft sales create --data '{"buyer":{"name":"Ana","email":"ana@org.com"},"items":[{"ticketTypeId":"tt_1","quantity":2}],"comp":true}' --json
+ft sales tickets sale_123 --json
+
+# 20% discount code, then list the active ones
+ft discounts create --data '{"code":"VERANO","type":"PERCENT","value":20}'
+ft discounts list --active true --json
+
+# register a signed webhook (save the signingSecret it returns — shown only once)
+ft webhooks create --data '{"url":"https://my-app.com/hooks/ft","events":["sale.confirmed"]}' --json
+
+# a plan's subscribers, and cancel a subscription
+ft plans subscribers plan_123 --json
+ft subscriptions cancel sub_123
+
+# revenue by event and a monthly time series
+ft reports by-event --from 2026-06-01 --to 2026-06-30 --json
+ft reports timeseries --interval month --from 2026-01-01 --json
+ft reports inventory --group-by ticketType --json
+
+# export attendees (one row per ticket) of an event to CSV
+ft reports export attendees --event evt_123 > attendees.csv
+
+# superadmin: suspend a tenant (asks for confirmation; --yes for scripts)
 ft admin workspaces suspend ws_123 --yes
 ```
 
@@ -189,8 +226,8 @@ Rule of thumb: this skill runs *one well-scoped `ft` action* at a time. Sequenci
 judgment, and contract changes belong to the agents above — delegate so each piece
 does what it's best at.
 
-`match_status`: `OK` · `MISSING_INVOICE` (pago sin factura) · `MISSING_CUFE`
-(factura sin timbre DIAN) · `AMOUNT_MISMATCH` (monto MP ≠ venta) · `MISSING_PAYMENT`.
+`match_status`: `OK` · `MISSING_INVOICE` (payment without invoice) · `MISSING_CUFE`
+(invoice without DIAN stamp) · `AMOUNT_MISMATCH` (MP amount ≠ sale) · `MISSING_PAYMENT`.
 
 ## Feedback & suggestions
 
