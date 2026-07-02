@@ -29,9 +29,10 @@ the agent can run `ft ... --json`.
 
 Before recommending anything, respect how FreeTicket actually works:
 
-1. **Brand voice:** all buyer-facing copy is **neutral Spanish** (tú / impersonal).
-   **Never voseo** ("creá/iniciá" ❌ → "crea/inicia" ✅). No tech jargon. Templates
-   in `references/language.md`.
+1. **Brand voice:** all buyer-facing copy is **Spanish** (tú / impersonal).
+   **Never voseo** ("creá/iniciá" ❌ → "crea/inicia" ✅). No tech jargon. Two
+   registers — marketing (jester/explorer attitude) vs product (clear, warm) —
+   full voice system and templates in `references/language.md`.
 2. **B2C portal visibility:** an event is only public if the **event is `PUBLISHED`**
    and it has **at least one `PUBLISHED`, future date**. Publishing the event must
    propagate the status to its dates.

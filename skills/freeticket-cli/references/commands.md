@@ -13,8 +13,11 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 | `ft login` | Browser device flow: mints a session, stores it in `~/.freeticket/config.json` (0600), validates against `/me`. |
 | `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
 | `ft whoami` | Prints the session's owning user, their role and accessible `workspaces[]`. |
-| `ft config` | Shows the effective config with the credential masked. |
+| `ft config` | Shows the effective config with the credential masked (`--json` for scripts). |
 | `ft logout` | Logs out — removes the stored session from the config file. |
+| `ft workspace list` | Workspaces the session can access. |
+| `ft workspace use <id>` | Persist the active workspace (sent as `X-Workspace-Id`). |
+| `ft workspace show` | Print the active workspace. |
 
 The credential acts as its owning user, **with that user's role**. A CI key is
 never stored in plaintext on the backend (only its `sha-256`); prefix `ft_live_`.
@@ -47,9 +50,9 @@ minimum role; insufficient → `403`.
 | `ft reports timeseries` | `--interval day\|week\|month` (req), `--from` `--to` `--event` | VIEWER |
 | `ft reports inventory` | `--event-id` `--event-date-id` `--from` `--to` `--include-drafts` `--group-by ticketType\|date\|event` | VIEWER |
 | `ft reports reconciliation` | `--from` `--to` (req), `--match` `--provider` `--page` `--page-size` | ADMIN |
-| `ft reports export buyers` · `attendees` | `--event` `--event-date` `--from` `--to` `--status` → CSV | ADMIN |
-| `ft reports export subscribers` | `--json` (recommended) | ADMIN |
-| `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider` → CSV | ADMIN |
+| `ft reports export buyers` · `attendees` | `--event` `--event-date` `--from` `--to` `--status`, `--csv` \| `--json` | ADMIN |
+| `ft reports export subscribers` | `--csv` \| `--json` | ADMIN |
+| `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider`, `--csv` \| `--json` | ADMIN |
 
 `reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE`
 (payment without invoice) · `MISSING_CUFE` (invoice without DIAN stamp) ·
