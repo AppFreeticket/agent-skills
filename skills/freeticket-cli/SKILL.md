@@ -39,7 +39,7 @@ npm install -g @freeticket/cli@latest && ft whoami
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
 >
-> This skill documents **`ft` ≥ 0.7.0**. A globally-installed `ft` that's behind
+> This skill documents **`ft` ≥ 0.9.0**. A globally-installed `ft` that's behind
 > prints an `⚠ Update available` line on *stderr*; when you see it, tell the user
 > to run `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
 
@@ -97,6 +97,9 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft staff list\|create\|set-role` | Workspace staff (`set-role --data '{"role":"…"}'`) | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
 | `ft reports by-event\|timeseries\|inventory` | Revenue/tickets by event · over time (`--interval`) · capacity/availability | VIEWER |
+| `ft reports financials` | Per-function P&L: gross, platform fee, facial, payment fee, 4x1000, net to settle (`--event`, `--past`) | ADMIN |
+| `ft settlements list` | What FreeTicket pays the organizer: amount, status, event (`--event`, `--status`) | ADMIN |
+| `ft api-keys create\|list\|revoke` | Headless service credentials — plaintext shown once on `create` (`--scope read\|write`) | VIEWER |
 | `ft reports reconciliation` | CFO: cross-check Mercado Pago ↔ sale ↔ Siigo invoice (`--from` `--to`, `--match`, `--provider`) | ADMIN |
 | `ft reports export buyers\|attendees\|subscribers\|reconciliation` | Export to CSV (buyers/attendees take `--event` `--event-date` `--from` `--to` `--status`) | ADMIN |
 
@@ -106,12 +109,24 @@ Common flags on all: `--json` (raw output for `jq`), `--workspace <id>`
 **`--data <json>`** (inline JSON or `@file.json`); `delete` asks for confirmation
 unless `--yes`.
 
+**Confirmation and exit codes.** A refused confirmation exits **1**, and without
+a TTY a destructive command fails immediately instead of prompting — so
+`ft … delete && next-step` never runs `next-step` on an abort. In scripts pass
+`--yes` deliberately, not as a habit.
+
+**Money questions go to `reports financials`, not to arithmetic over `sales`.**
+It returns the authoritative breakdown FreeTicket already computed (the same
+numbers as the Liquidaciones dashboard). `settlements list` then says what was
+actually paid out. The proof PDF is panel-only — the API exposes `hasDocument`
+and file names, not a download URL.
+
 ### Superadmin (`ft admin …`) — cross-tenant, separate contract
 
 Superadmin commands hit a **different contract** (`/api/admin`) with **different
 auth**: a SUPER_ADMIN better-auth session, *not* an API key. Save it once with
-`ft admin login` — it validates against `/api/admin/me` before storing (MVP — a
-service token is coming, see free-admin#157):
+`ft admin login` — it validates against `/api/admin/me` before storing. For CI,
+mint a platform service token from that session with `ft admin tokens create`
+instead of shipping the cookie around:
 
 ```bash
 # copy the `better-auth.session_token` cookie from an authenticated admin browser session
@@ -132,6 +147,7 @@ ft admin me                                            # confirm identity
 | `ft admin feature-flags list` · `set <key> --data '{"scope":"…","enabled":true}'` | Feature flags |
 | `ft admin audit-log list` | Audit log (`--actor`, `--action`, `--from`, `--to`) |
 | `ft admin impersonate --data '{"targetUserId":"…"}'` · `impersonate-stop` | Impersonation |
+| `ft admin tokens list\|create\|revoke` | Platform service tokens (PAT) for headless `ft admin` — plaintext shown once |
 
 Admin lists also take `--csv`. Writes take `--data <json>`.
 

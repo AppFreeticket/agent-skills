@@ -31,7 +31,7 @@ minimum role; insufficient → `403`.
 
 | Command | Own flags | Role |
 |---|---|---|
-| `ft events list` | `--limit` `--cursor` | VIEWER |
+| `ft events list` | `--q <text>` (search) `--limit` `--cursor` | VIEWER |
 | `ft events get <id>` | — | VIEWER |
 | `ft ticket-types list` | `--event-date-id <id>` `--limit` `--cursor` | VIEWER |
 | `ft ticket-types get <id>` | — | VIEWER |
@@ -45,7 +45,10 @@ minimum role; insufficient → `403`.
 | `ft webhooks list` | `--limit` `--cursor` | ADMIN |
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft staff list` | `--limit` `--cursor` | ADMIN |
+| `ft settlements list` | `--event` `--status SENT\|AWAITING_PAYMENT\|PAID` `--limit` `--cursor` | ADMIN |
+| `ft api-keys list` | `--limit` `--cursor` | VIEWER |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
+| `ft reports financials` | `--event` `--past`, `--csv` \| `--json` | ADMIN |
 | `ft reports by-event` | `--from` `--to` `--status` | VIEWER |
 | `ft reports timeseries` | `--interval day\|week\|month` (req), `--from` `--to` `--event` | VIEWER |
 | `ft reports inventory` | `--event-id` `--event-date-id` `--from` `--to` `--include-drafts` `--group-by ticketType\|date\|event` | VIEWER |
@@ -53,6 +56,18 @@ minimum role; insufficient → `403`.
 | `ft reports export buyers` · `attendees` | `--event` `--event-date` `--from` `--to` `--status`, `--csv` \| `--json` | ADMIN |
 | `ft reports export subscribers` | `--csv` \| `--json` | ADMIN |
 | `ft reports export reconciliation` | `--from` `--to` (req), `--match` `--provider`, `--csv` \| `--json` | ADMIN |
+
+`settlements` = what FreeTicket pays the organizer (authoritative, already
+computed): `reference`, `status`, `amount`, `currency`, event/function,
+`hasDocument`, `paymentProofs[].fileName`, `requestedAt`/`paidAt`. The proof PDF
+is **not** downloadable through the API — it lives in the panel.
+
+`reports financials` = one row per function with the full breakdown: `gross`,
+`platformFee`, `facial`, `paymentFee`, `gmf` (4x1000), `net`, plus the linked
+`settlementStatus`/`settlementId`/`settlementAmount`. Use it instead of
+recomputing margins from `sales list` + payment-provider data — same numbers as
+the Liquidaciones dashboard. `--past` narrows to functions that already happened
+(the settleable ones).
 
 `reconciliation` `--match` / `match_status` enum: `OK` · `MISSING_INVOICE`
 (payment without invoice) · `MISSING_CUFE` (invoice without DIAN stamp) ·
@@ -94,6 +109,20 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
 | `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
 
+## Service credentials (`ft api-keys …`)
+
+Headless credential for CI / cron — no browser, no device flow. The plaintext
+(`ft_live_…`) is shown **once**, in the `create` response.
+
+```bash
+ft api-keys create --name "finance-sync" --scope read   # scope: read (default) | write
+ft api-keys list
+ft api-keys revoke <id> --yes
+```
+
+`read` allows GET/HEAD only; `write` enables mutations subject to the user's
+role. Use it with `--key ft_live_…` or `FT_API_KEY`.
+
 ## Admin (`ft admin …`) — separate contract `/api/admin`
 
 A **second contract**, not `/api/v1`. It is **cross-tenant** (not workspace-scoped)
@@ -127,6 +156,9 @@ ft admin login --session <better-auth.session_token>   # validates vs /api/admin
 | `ft admin audit-log list` | `--actor` `--action` `--from` `--to` `--limit` `--cursor` | SUPER_ADMIN |
 | `ft admin impersonate` | `--data` (`{"targetUserId","workspaceId?"}`) | SUPER_ADMIN |
 | `ft admin impersonate-stop` | — | SUPER_ADMIN |
+| `ft admin tokens list` | — (no pagination) | SUPER_ADMIN |
+| `ft admin tokens create` | `--data` (`{"name","expiresAt?"}`) — plaintext shown once | SUPER_ADMIN |
+| `ft admin tokens revoke <id>` | `--yes` to skip confirm | SUPER_ADMIN |
 
 Without an admin session (`ft admin login` or `FT_ADMIN_SESSION`) the command
 fails fast with a clear message. A missing/expired session returns `401`; a
