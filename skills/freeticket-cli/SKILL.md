@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, CFO reconciliation); and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, per-function financials, CFO reconciliation); read settlements paid to the organizer; mint headless service API keys; and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -39,9 +39,20 @@ npm install -g @freeticket/cli@latest && ft whoami
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
 >
-> This skill documents **`ft` ≥ 0.9.0**. A globally-installed `ft` that's behind
-> prints an `⚠ Update available` line on *stderr*; when you see it, tell the user
-> to run `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
+> This skill documents **`ft` ≥ 0.9.0** (skill revision 2026-08-03). A
+> globally-installed `ft` that's behind prints an `⚠ Update available` line on
+> *stderr*; when you see it, tell the user to run
+> `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
+>
+> **If the skill is the stale one** — `ft --help` lists a command this file does
+> not, or a documented flag is rejected — trust the CLI, not this file, and
+> update the installed copy:
+>
+> ```bash
+> npx skills add AppFreeticket/agent-skills   # reinstalls from source
+> ```
+>
+> Then say so, so the drift gets fixed upstream instead of silently repeating.
 
 `ft login` uses the OAuth 2.0 Device Authorization Grant: it shows a short code
 and a URL, opens your browser, and once you approve it stores the session in
