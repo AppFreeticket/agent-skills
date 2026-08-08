@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "freeticket",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Operate FreeTicket from any agent: skills for the ft CLI, event copy, and the MCP server that exposes the B2B, superadmin and public contracts as tools.",
   "author": {
     "name": "FreeTicket",
