@@ -1,0 +1,15 @@
+{
+  "name": "freeticket",
+  "description": "Official FreeTicket plugin: run and grow ticketed events from your agent — CLI, MCP server and brand-voice copy.",
+  "owner": {
+    "name": "FreeTicket",
+    "url": "https://github.com/AppFreeticket"
+  },
+  "plugins": [
+    {
+      "name": "freeticket",
+      "source": "./",
+      "description": "Skills for the ft CLI, the MCP server and event copy, plus the freeticket MCP server wired in."
+    }
+  ]
+}

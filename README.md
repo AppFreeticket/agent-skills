@@ -21,11 +21,19 @@ Claude Code, Cursor, and any agent that reads markdown skills.
 ```bash
 # Install a specific skill (recommended)
 npx skills add AppFreeticket/agent-skills@freeticket-cli
+npx skills add AppFreeticket/agent-skills@freeticket-mcp
 npx skills add AppFreeticket/agent-skills@freeticket-eventos
 
 # List what's in the repo
 npx skills add AppFreeticket/agent-skills -l
 ```
+
+Or install **all three skills plus the MCP server at once**: this repo is also a
+plugin under the [Agent Plugins 1.0.0](https://agent-plugins.org) standard —
+`plugin.json` + `skills/` + `mcp.json` at the root. Point any compatible client
+(Claude Code, VS Code, …) at `AppFreeticket/agent-skills` and it wires up the
+skills *and* the `freeticket` MCP server (`npx -y @freeticket/mcp`) together.
+Run `npx @freeticket/cli@latest login` once and both are authenticated.
 
 Skills install into `~/.claude/skills/` (global) or the project's `.claude/skills/`.
 The agent loads each skill's `name` + `description` and opens the body only when
@@ -63,12 +71,15 @@ The only requirement is a terminal where the agent (or you) can run `npx`.
 
 ## Skills Overview
 
-**2 skills.** They compose: `freeticket-eventos` calls `freeticket-cli` to pull
-live data before it audits.
+**3 skills.** They compose: `freeticket-eventos` pulls live data before it
+audits, through `freeticket-cli` in a terminal or `freeticket-mcp` in a chat
+client. `freeticket-cli` and `freeticket-mcp` are the same B2B contract from two
+directions — the CLI for terminals and scripts, the MCP server for chat clients.
 
 | Skill | Scope | Install |
 |---|---|---|
 | [`freeticket-cli`](./skills/freeticket-cli) | Drive the official `ft` CLI (`@freeticket/cli`): log in (browser device flow), list/inspect **and** create/update/delete events, dates, ticket types, sales, membership plans, venues, staff; publish events; cancel/refund sales; run CFO reconciliation; export anything to CSV. Superadmin via `ft admin …`. `--json`/`--csv` for automation. | `npx skills add AppFreeticket/agent-skills@freeticket-cli` |
+| [`freeticket-mcp`](./skills/freeticket-mcp) | Connect to and operate the official MCP server (`@freeticket/mcp`): local stdio setup, remote connectors on claude.ai via the embedded OAuth 2.1 server, the three credential layers (anonymous B2C → workspace B2B → superadmin), all 87 tools, and the MCP Apps view that renders lists and reports inside the host. | `npx skills add AppFreeticket/agent-skills@freeticket-mcp` |
 | [`freeticket-eventos`](./skills/freeticket-eventos) | Event & community advisor: applies FreeTicket's brand voice and real product rules (visibility, member-gated presales, platform fee, time zone, required ticket fields), and **audits events with live data** (via `ft`) to recommend sales and retention improvements. | `npx skills add AppFreeticket/agent-skills@freeticket-eventos` |
 
 ---
@@ -83,6 +94,8 @@ Ask your agent in natural language — it picks the right skill. Examples:
 | "Create an event" / "Publish it" / "Refund sale X" / "Raise a ticket price" | `freeticket-cli` |
 | "Run the CFO reconciliation" / "Suspend a tenant" / "Set a feature flag" | `freeticket-cli` (incl. `ft admin …`) |
 | "Automate this report" / "Give me `--json` for `jq`" / "Configure my API key" | `freeticket-cli` |
+| "Add FreeTicket to Claude Desktop" / "Set up the MCP connector on claude.ai" | `freeticket-mcp` |
+| "Why do I only see the public tools?" / "Which MCP tool refunds a sale?" | `freeticket-mcp` |
 | "Write the description for this event" / "Improve my event copy" | `freeticket-eventos` |
 | "Why isn't this event selling?" / "Audit my event" | `freeticket-eventos` (pulls data via `ft`) |
 | "How do I grow and retain my audience?" / "Recommend a presale strategy" | `freeticket-eventos` |
@@ -106,6 +119,9 @@ agent-skills/
     ├── freeticket-cli/
     │   ├── SKILL.md
     │   └── references/commands.md
+    ├── freeticket-mcp/
+    │   ├── SKILL.md
+    │   └── references/tools.md      # 87 tools + what is deliberately absent
     └── freeticket-eventos/
         ├── SKILL.md
         └── references/
@@ -118,6 +134,7 @@ agent-skills/
 ## Related
 
 - CLI: [`@freeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binary `ft`)
+- MCP server: [`@freeticket/mcp`](https://github.com/AppFreeticket/freeticket-mcp)
 - B2B API v1: OpenAPI 3.1 contract at `GET /api/v1/openapi.json`
 
 ## License

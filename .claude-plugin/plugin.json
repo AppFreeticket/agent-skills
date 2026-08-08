@@ -1,0 +1,15 @@
+{
+  "name": "freeticket",
+  "displayName": "FreeTicket",
+  "version": "0.1.0",
+  "description": "Operate FreeTicket from your agent: skills for the ft CLI, the MCP server and event copy, plus the freeticket MCP server (B2B, superadmin and public contracts as tools).",
+  "author": {
+    "name": "FreeTicket",
+    "url": "https://freeticket.co"
+  },
+  "homepage": "https://freeticket.co",
+  "repository": "https://github.com/AppFreeticket/agent-skills",
+  "license": "MIT",
+  "keywords": ["freeticket", "ticketing", "events", "latam", "mcp", "cli"],
+  "mcpServers": "./mcp.json"
+}
