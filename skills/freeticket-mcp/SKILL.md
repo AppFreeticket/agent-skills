@@ -29,7 +29,21 @@ local MCP server reads it. Log in once, both work.
 
 ## Setup
 
+### Fastest: the plugin (Claude Code)
+
+```
+/plugin marketplace add AppFreeticket/agent-skills
+/plugin install freeticket@freeticket
+```
+
+Installs the three skills **and** wires the server (remote transport, OAuth in
+the browser on first use). Nothing to configure by hand.
+
 ### Local (Claude Code, Claude Desktop, Cursor)
+
+> ⚠️ `@freeticket/mcp` **is not on npm yet** — `npx -y @freeticket/mcp` fails
+> with "Connection closed". Until it ships, use the plugin or the remote
+> connector below, or run it from a clone (`pnpm build` → `node dist/index.js`).
 
 ```jsonc
 {

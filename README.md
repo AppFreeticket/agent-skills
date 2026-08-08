@@ -28,12 +28,19 @@ npx skills add AppFreeticket/agent-skills@freeticket-eventos
 npx skills add AppFreeticket/agent-skills -l
 ```
 
-Or install **all three skills plus the MCP server at once**: this repo is also a
-plugin under the [Agent Plugins 1.0.0](https://agent-plugins.org) standard —
-`plugin.json` + `skills/` + `mcp.json` at the root. Point any compatible client
-(Claude Code, VS Code, …) at `AppFreeticket/agent-skills` and it wires up the
-skills *and* the `freeticket` MCP server (`npx -y @freeticket/mcp`) together.
-Run `npx @freeticket/cli@latest login` once and both are authenticated.
+Or install **all three skills plus the MCP server at once** — this repo is also a
+plugin under the [Agent Plugins 1.0.0](https://agent-plugins.org) standard
+(`plugin.json` + `skills/` + `mcp.json` at the root):
+
+```bash
+# Claude Code
+/plugin marketplace add AppFreeticket/agent-skills
+/plugin install freeticket@freeticket
+```
+
+Any Agent-Plugins-compatible client can read the same manifests. The plugin
+wires the `freeticket` MCP server over its hosted endpoint and authorizes in the
+browser on first use — no keys to paste, nothing to install.
 
 Skills install into `~/.claude/skills/` (global) or the project's `.claude/skills/`.
 The agent loads each skill's `name` + `description` and opens the body only when
