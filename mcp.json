@@ -2,9 +2,8 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "freeticket": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@freeticket/mcp@0.13.0"]
+      "type": "streamable-http",
+      "url": "https://mcp.appfreeticket.com/mcp"
     }
   }
 }

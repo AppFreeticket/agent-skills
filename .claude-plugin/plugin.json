@@ -11,5 +11,10 @@
   "repository": "https://github.com/AppFreeticket/agent-skills",
   "license": "MIT",
   "keywords": ["freeticket", "ticketing", "events", "latam", "mcp", "cli"],
-  "mcpServers": "./mcp.json"
+  "mcpServers": {
+    "freeticket": {
+      "type": "http",
+      "url": "https://mcp.appfreeticket.com/mcp"
+    }
+  }
 }
