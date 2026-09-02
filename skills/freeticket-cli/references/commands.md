@@ -31,7 +31,7 @@ minimum role; insufficient → `403`.
 
 | Command | Own flags | Role |
 |---|---|---|
-| `ft events list` | `--q <text>` (search) `--limit` `--cursor` | VIEWER |
+| `ft events list` | `--q <text>` (search) `--status DRAFT\|PUBLISHED\|SOLD_OUT\|CANCELLED\|COMPLETED` `--with-total` `--limit` `--cursor` | VIEWER |
 | `ft events get <id>` | — | VIEWER |
 | `ft ticket-types list` | `--event-date-id <id>` `--limit` `--cursor` | VIEWER |
 | `ft ticket-types get <id>` | — | VIEWER |
@@ -44,8 +44,9 @@ minimum role; insufficient → `403`.
 | `ft discounts list` | `--event` `--active true\|false` `--limit` `--cursor` | ADMIN |
 | `ft webhooks list` | `--limit` `--cursor` | ADMIN |
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
-| `ft staff list` | `--limit` `--cursor` | ADMIN |
+| `ft staff list` | `--workspace-ids <ids>` (comma-separated, max 25 — one call, rows tagged by workspace) `--limit` `--cursor` | ADMIN |
 | `ft settlements list` | `--event` `--status SENT\|AWAITING_PAYMENT\|PAID` `--limit` `--cursor` | ADMIN |
+| `ft settlements document <id>` | `--proof <fileName>` (payment proof instead of the receipt) | ADMIN |
 | `ft api-keys list` | `--limit` `--cursor` | VIEWER |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
 | `ft reports financials` | `--event` `--past`, `--csv` \| `--json` | ADMIN |
@@ -59,8 +60,9 @@ minimum role; insufficient → `403`.
 
 `settlements` = what FreeTicket pays the organizer (authoritative, already
 computed): `reference`, `status`, `amount`, `currency`, event/function,
-`hasDocument`, `paymentProofs[].fileName`, `requestedAt`/`paidAt`. The proof PDF
-is **not** downloadable through the API — it lives in the panel.
+`hasDocument`, `paymentProofs[].fileName`, `requestedAt`/`paidAt`. Download it
+with `ft settlements document <id>`: it prints a **signed URL valid for 5
+minutes**, not the file (the API answers 302 to private storage).
 
 `reports financials` = one row per function with the full breakdown: `gross`,
 `platformFee`, `facial`, `paymentFee`, `gmf` (4x1000), `net`, plus the linked
@@ -96,8 +98,8 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft plans create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft sales create` | `--data` (`{buyer:{name,email,phone?}, items:[{ticketTypeId,quantity}], channel?, comp?, notes?}`) | ADMIN |
-| `ft sales cancel <id>` | — | ADMIN |
-| `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial) | ADMIN |
+| `ft sales cancel <id>` | `--data '{"acknowledge_open_payment":true}'` when the payment is still open at the gateway | ADMIN |
+| `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial, `{"acknowledge_manual":true}` when the money goes back by hand) | ADMIN |
 | `ft tickets checkin <code>` | — (idempotent; re-running never double-admits) | STAFF |
 | `ft tickets resend <code>` | — (resends the sale's confirmation email/QR) | ADMIN |
 | `ft subscriptions cancel <id>` | — (idempotent; keeps the original cancel date) | ADMIN |
@@ -146,7 +148,8 @@ ft admin login --session <better-auth.session_token>   # validates vs /api/admin
 | `ft admin users list` | `--q` `--role` `--workspace` `--limit` `--cursor` | SUPER_ADMIN |
 | `ft admin users get <id>` | — | SUPER_ADMIN |
 | `ft admin workspaces create` | `--data` | SUPER_ADMIN |
-| `ft admin workspaces update <id>` | `--data` | SUPER_ADMIN |
+| `ft admin workspaces update <id>` | `--data` (also `webTemplate`, `customDomain`, `customDomainVerifiedAt`) | SUPER_ADMIN |
+| `ft admin workspaces plan <id>` | `--data '{"planSlug":"spark\|star\|icon\|legend"}'` `--yes`; assisted sale, no Stripe self-service | SUPER_ADMIN |
 | `ft admin workspaces suspend <id>` | `--yes` to skip confirm | SUPER_ADMIN |
 | `ft admin workspaces restore <id>` | — | SUPER_ADMIN |
 | `ft admin users update <id>` | `--data` | SUPER_ADMIN |

@@ -1,6 +1,7 @@
-# Tool inventory — `@freeticket/mcp` v0.13.0
+# Tool inventory — `@freeticket/mcp` v0.14.0
 
-87 tools, one per contract operation. `?` marks an optional argument.
+103 tools, one per contract operation (B2B 76 · superadmin 21 · public 6).
+Contracts: B2B `1.7.0` · superadmin `1.3.0` · public `0.4.0`. `?` marks an optional argument.
 **▣** = renders through the MCP Apps view (table or KPI tiles in the host).
 **⚠** = `destructiveHint`: confirm with the human and quote what will be
 affected before calling.
@@ -32,13 +33,13 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 
 | Tool | Arguments |
 |---|---|
-| `whoami` | — — user + accessible workspaces |
+| `whoami` | — — user + accessible workspaces, each with the **effective role and enabled sections** in that workspace (`sections: null` = unrestricted, `[]` = expired or revoked). The top-level `role` is deprecated |
 
 ### Events and dates
 
 | Tool | Arguments | Notes |
 |---|---|---|
-| ▣ `events_list` | `limit? cursor? workspace?` | |
+| ▣ `events_list` | `q? status? withTotal? limit? cursor? workspace?` | `status` filters in the query, so `limit` counts returned rows. `withTotal` adds `page.total` (opt-in: extra count query) |
 | `events_get` | `id` | |
 | `events_create` | `name slug description? venueId? dates` | `dates`: at least one `{startsAt, endsAt?, timezone}` |
 | `events_update` | `id name? description? venueId? coverImageUrl?` | |
@@ -70,8 +71,8 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `sales_get` | `id` | |
 | `sales_tickets` | `id` | Individual tickets/attendees of a sale |
 | `sales_create` | `buyer items channel comp notes?` | Comps and programmatic orders |
-| ⚠ `sales_cancel` | `id` | |
-| ⚠ `sales_refund` | `id` | |
+| ⚠ `sales_cancel` | `id acknowledge_open_payment?` | The flag is required when the payment is still open at the gateway |
+| ⚠ `sales_refund` | `id acknowledge_manual?` | The flag confirms the money goes back by hand, outside the gateway |
 
 ### Memberships
 
@@ -103,7 +104,7 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `venues_create` | `name address city country capacity? latitude? longitude?` | |
 | `venues_update` | `id name? address? city? country? capacity? latitude? longitude? portalVisible?` | |
 | ⚠ `venues_delete` | `id` | |
-| ▣ `staff_list` | `limit? cursor? workspace?` | |
+| ▣ `staff_list` | `limit? cursor? workspace?` | The only list where `workspace` is resolved **by the contract** (`workspaceIds`, max 25) instead of a client-side fan-out: one call, rows tagged by the backend |
 | `staff_create` | `name email` | |
 | `staff_update_role` | `id role` | |
 
@@ -117,7 +118,9 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | ▣ `reports_inventory` | `eventId? eventDateId? from? to? includeDrafts? groupBy?` | Capacity / sold / reserved / available. `groupBy`: `ticketType\|date\|event` |
 | ▣ `reports_financials` | `event? past?` | Per-function P&L: gross, platform fee, facial value, gateway fee, 4x1000, net to settle. **These are the authoritative numbers** — do not recompute them from `sales_list` |
 | ▣ `reconciliation` | `date_from date_to match_status? provider? page? page_size?` | CFO view: sale ↔ Mercado Pago ↔ Siigo invoice. `match_status`: `OK\|MISSING_INVOICE\|MISSING_CUFE\|AMOUNT_MISMATCH\|MISSING_PAYMENT` |
-| ▣ `settlements_list` | `event? status? limit? cursor?` | What FreeTicket pays the organizer. `status`: `SENT\|AWAITING_PAYMENT\|PAID`. The receipt PDF is downloaded from the panel — the API carries `hasDocument` and filenames, not a URL |
+| ▣ `settlements_list` | `event? status? limit? cursor?` | What FreeTicket pays the organizer. `status`: `SENT\|AWAITING_PAYMENT\|PAID`. Carries `hasDocument` and the file names |
+| `settlements_document` | `id` | **Signed URL** for the receipt PDF, 5 minutes TTL. Returns the link, not the file: the API answers 302 and following it would drop a whole PDF into the context |
+| `settlements_proof` | `id fileName` | Same, for a payment proof. File names come from `settlements_list` |
 | `reports_export_buyers` | `event? eventDate? from? to? status?` | One row per sale |
 | `reports_export_attendees` | `event? eventDate? from? to? status?` | One row per ticket |
 | `reports_export_subscribers` | — | |
@@ -129,15 +132,38 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 |---|---|---|
 | ▣ `api_keys_list` | `limit? cursor?` | Audit which service keys exist and when they were used. Never returns the secret. Minting and revoking are CLI-only (`ft api-keys`) |
 
-### Headless SSO (enterprise integrations)
+### Members area — headless SSO (enterprise integrations)
 
-Both require an **enterprise service API key** *and* the buyer's session token
-from the headless SSO exchange. With a normal workspace key the API returns 403.
+All of these require an **enterprise service API key** *and* the buyer's session
+token from the headless SSO exchange. With a normal workspace key the API
+returns 403. They speak for the buyer, not for the workspace: same surface the
+members area of the website has.
 
-| Tool | Arguments |
-|---|---|
-| `customer_me` | `customerSession` |
-| ▣ `customer_tickets` | `customerSession limit? cursor?` |
+| Tool | Arguments | Notes |
+|---|---|---|
+| `customer_me` | `customerSession` | Identity + session expiry |
+| ▣ `customer_tickets` | `customerSession limit? cursor?` | Only CONFIRMED sales inside the key's scope |
+| `customer_ticket_get` | `id customerSession` | Ticket detail — deep link from the list |
+| ▣ `customer_membership` | `customerSession` | Plan, validity, and whether member-only content is unlocked |
+| `customer_profile` | `customerSession` | Name and phone |
+| ⚠ `customer_ticket_cancel` | `id customerSession` | The buyer cancels their own purchase, only while unpaid |
+| `customer_subscribe` | `planId customerSession` | Returns the payment URL — the agent never charges |
+| ⚠ `customer_subscription_cancel` | `customerSession` | Cancels the buyer's own membership |
+| `customer_profile_update` | `name? phone? customerSession` | `phone` null or empty clears it |
+| `customer_logout` | `customerSession` | Ends the headless SSO session |
+
+### Content (videos, community feed, live streams)
+
+Workspace API key only — the listings show published content. They never carry
+the playback id: to play something, mint a token.
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| ▣ `content_videos` | `limit? cursor?` | Published and READY only |
+| ▣ `content_posts` | `limit? cursor?` | Community feed |
+| ▣ `content_lives` | `limit? cursor?` | Live streams with their state |
+| `content_live_get` | `id` | State of one stream |
+| `content_playback_token` | `kind id customerSession?` | Signed token: 30 min live, 1 h video. `memberOnly` content also needs a buyer session with an active membership (otherwise 403 `MEMBERSHIP_REQUIRED`) |
 
 ---
 
@@ -153,7 +179,8 @@ Cross-tenant. Everything here affects other people's workspaces.
 | ▣ `admin_workspaces` | `q? status? limit? cursor?` | |
 | `admin_workspaces_get` | `id` | |
 | `admin_workspaces_create` | `name slug type country email?` | `type`: `ARTIST\|VENUE\|ORGANIZER` |
-| `admin_workspaces_update` | `id name? slug? type? isPublished?` | |
+| `admin_workspaces_update` | `id name? slug? type? isPublished? webTemplate? customDomain? customDomainVerifiedAt?` | Website template and custom domain of the tenant; `null` on either one unlinks it |
+| ⚠ `admin_workspaces_assign_plan` | `id planSlug` | Assisted sale: activates `spark\|star\|icon\|legend` without Stripe self-service. A linked Stripe subscription is cancelled there first; if that fails the API aborts with 409 and touches nothing |
 | ⚠ `admin_workspaces_suspend` | `id` | |
 | `admin_workspaces_restore` | `id` | |
 | ▣ `admin_users` | `q? role? limit? cursor?` | |
