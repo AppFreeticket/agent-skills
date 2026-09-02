@@ -1,6 +1,6 @@
 ---
 name: freeticket-mcp
-description: Connect to and operate the official FreeTicket MCP server (`@freeticket/mcp`) — the same B2B domain the `ft` CLI exposes, but as MCP tools for any MCP client. Covers the three credential layers (anonymous B2C `public_*`, workspace B2B, superadmin `admin_*`), local stdio setup, remote HTTP connectors on claude.ai via the embedded OAuth 2.1 server, the full tool inventory (87 tools), and the MCP Apps view that renders lists and reports as tables and KPI tiles inside the host. Use it when the user wants to add FreeTicket to Claude Desktop / claude.ai / Cursor, is already calling `freeticket` MCP tools and needs to know which one to pick, is debugging why tools are missing or a connector won't authorize, or is deciding between the MCP server and the `ft` CLI for a task.
+description: Connect to and operate the official FreeTicket MCP server (`@freeticket/mcp`) — the same B2B domain the `ft` CLI exposes, but as MCP tools for any MCP client. Covers the three credential layers (anonymous B2C `public_*`, workspace B2B, superadmin `admin_*`), local stdio setup, remote HTTP connectors on claude.ai via the embedded OAuth 2.1 server, the full tool inventory (103 tools: workspace B2B, members area, content, settlements, superadmin and public catalogue), and the MCP Apps view that renders lists and reports as tables and KPI tiles inside the host. Use it when the user wants to add FreeTicket to Claude Desktop / claude.ai / Cursor, is already calling `freeticket` MCP tools and needs to know which one to pick, is debugging why tools are missing or a connector won't authorize, or is deciding between the MCP server and the `ft` CLI for a task.
 ---
 
 # FreeTicket MCP server (`@freeticket/mcp`)
@@ -10,8 +10,11 @@ the `ft` CLI consumes — one tool per contract operation, generated from the sp
 never hand-written. If the API can do it, there is a tool; if there is no tool,
 the API cannot do it yet.
 
-**87 tools** across three contracts: B2B `/api/v1` (61), superadmin `/api/admin`
-(20), public B2C `/api/public` (6). Full inventory with signatures:
+**103 tools** across three contracts: B2B `/api/v1` (76), superadmin
+`/api/admin` (21), public B2C `/api/public` (6). Contracts at `1.7.0` / `1.3.0` /
+`0.4.0` — the same surface the website operates on: events and sales, the
+**members area** (memberships, profile, own tickets), **content** (videos, feed,
+live streams), and **settlement receipts**. Full inventory with signatures:
 [`references/tools.md`](references/tools.md).
 
 ## MCP server or `ft` CLI?
@@ -88,8 +91,9 @@ is not a bug — it is a missing credential.**
 | Layer | Requires | Tools |
 |---|---|---|
 | Public B2C | nothing | `public_*` (6) — always registered |
-| B2B workspace | API key / `ft login` session | events, sales, tickets, plans, venues, staff, reports, settlements (61) |
-| Superadmin | `FT_ADMIN_SESSION` | `admin_*` (20) — cross-tenant |
+| B2B workspace | API key / `ft login` session | events, sales, tickets, plans, venues, staff, reports, settlements, content (76) |
+| Members area | enterprise key **+** buyer session (`X-Customer-Session`) | `customer_*` — speak for a buyer, not for the workspace |
+| Superadmin | `FT_ADMIN_SESSION` | `admin_*` (21) — cross-tenant |
 
 If the user asks for something and the tool isn't there, check the layer before
 anything else: no `events_list` means no API key; no `admin_users` means no
@@ -122,6 +126,22 @@ array of ids. Each row comes back tagged with `workspaceId`/`workspaceName`.
 Omit it for the active workspace alone. Writes have no global mode — a mutation
 is always explicitly scoped to one workspace.
 
+**Permissions are per workspace, and the backend enforces them.** `whoami`
+returns, for every workspace, the **effective role** and the enabled `sections`
+(`null` = unrestricted, `[]` = expired or revoked). The old top-level `role` is
+deprecated — read the row, not the global field. A user capped in the panel is
+capped here too: a 403 on one workspace of a global read is that cap working,
+not a bug to route around.
+
+**Files come back as links, not bytes.** `settlements_document` and
+`settlements_proof` return a signed URL that expires in 5 minutes. Hand it to
+the user; do not try to fetch or transcribe the PDF.
+
+**Content playback needs a token.** The `content_*` listings never carry the
+playback id. Mint one with `content_playback_token` (30 min live, 1 h video);
+`memberOnly` items also need the buyer session of someone with an active
+membership.
+
 **Money is in COP** and lists are cursor-paginated (`limit` 1–100, default 20,
 plus `cursor`). Dates are ISO 8601; events carry their own IANA timezone.
 
@@ -129,7 +149,7 @@ plus `cursor`). Dates are ISO 8601; events carry their own IANA timezone.
 
 Lists and reports do not arrive as a wall of JSON. The server implements the
 official **`io.modelcontextprotocol/ui`** extension (MCP Apps, spec
-`2026-01-26`): 25 tools declare `_meta.ui.resourceUri` pointing at
+`2026-01-26`): 29 tools declare `_meta.ui.resourceUri` pointing at
 `ui://freeticket/view.html`, and a supporting host renders them — **array →
 table**, **object → KPI tiles** — with FreeTicket's mark and accent, adopting the
 host's own palette and locale for everything else.

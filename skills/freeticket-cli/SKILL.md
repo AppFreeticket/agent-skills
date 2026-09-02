@@ -39,7 +39,8 @@ npm install -g @freeticket/cli@latest && ft whoami
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
 >
-> This skill documents **`ft` ≥ 0.9.0** (skill revision 2026-08-03). A
+> This skill documents **`ft` ≥ 0.9.0** (skill revision 2026-09-02, contract
+> B2B 1.7.0 / admin 1.3.0). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
 > *stderr*; when you see it, tell the user to run
 > `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
@@ -91,12 +92,12 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft login` | Browser login (device flow); `--key <key>` for CI | VIEWER |
 | `ft whoami` | Active user + workspaces | VIEWER |
 | `ft config` · `ft logout` | Show config (masked session) · log out | — |
-| `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle | VIEWER read / ADMIN write |
+| `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
 | `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
 | `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
-| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data` for partial) | ADMIN |
+| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data` for partial; `--data '{"acknowledge_open_payment":true}'` on cancel when the payment is still open, `acknowledge_manual` on an out-of-gateway refund) | ADMIN |
 | `ft sales tickets <id>` | List the individual tickets/attendees of a sale | STAFF |
 | `ft tickets access\|checkin\|resend <code>` | Door: read access status · admit (idempotent) · resend QR email | STAFF read / ADMIN resend |
 | `ft plans list\|get\|create\|update\|delete` | Membership plans | ADMIN write |
@@ -105,11 +106,12 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft discounts list\|create\|update\|delete` | Discount codes / coupons (`--event` `--active`) | ADMIN |
 | `ft webhooks list\|create\|delete` | Webhook endpoints, HMAC-signed delivery | ADMIN |
 | `ft venues list\|get\|create\|update\|delete` | Venues | ADMIN write |
-| `ft staff list\|create\|set-role` | Workspace staff (`set-role --data '{"role":"…"}'`) | ADMIN |
+| `ft staff list\|create\|set-role` | Workspace staff (`list --workspace-ids <ids>` covers up to 25 workspaces in one call; `set-role --data '{"role":"…"}'`) | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
 | `ft reports by-event\|timeseries\|inventory` | Revenue/tickets by event · over time (`--interval`) · capacity/availability | VIEWER |
 | `ft reports financials` | Per-function P&L: gross, platform fee, facial, payment fee, 4x1000, net to settle (`--event`, `--past`) | ADMIN |
 | `ft settlements list` | What FreeTicket pays the organizer: amount, status, event (`--event`, `--status`) | ADMIN |
+| `ft settlements document <id>` | Signed download URL for the receipt PDF (5 min TTL); `--proof <fileName>` for a payment proof | ADMIN |
 | `ft api-keys create\|list\|revoke` | Headless service credentials — plaintext shown once on `create` (`--scope read\|write`) | VIEWER |
 | `ft reports reconciliation` | CFO: cross-check Mercado Pago ↔ sale ↔ Siigo invoice (`--from` `--to`, `--match`, `--provider`) | ADMIN |
 | `ft reports export buyers\|attendees\|subscribers\|reconciliation` | Export to CSV (buyers/attendees take `--event` `--event-date` `--from` `--to` `--status`) | ADMIN |
@@ -128,8 +130,10 @@ a TTY a destructive command fails immediately instead of prompting — so
 **Money questions go to `reports financials`, not to arithmetic over `sales`.**
 It returns the authoritative breakdown FreeTicket already computed (the same
 numbers as the Liquidaciones dashboard). `settlements list` then says what was
-actually paid out. The proof PDF is panel-only — the API exposes `hasDocument`
-and file names, not a download URL.
+actually paid out, and `settlements document <id>` prints a **signed URL that
+expires in 5 minutes** for the receipt PDF (`--proof <fileName>` for a payment
+proof). It prints the link, never the file: the API answers 302 to private
+storage. Hand the user the URL.
 
 ### Superadmin (`ft admin …`) — cross-tenant, separate contract
 
@@ -152,7 +156,8 @@ ft admin me                                            # confirm identity
 |---|---|
 | `ft admin login --session <token>` · `logout` · `config` | Save (validated) · clear · show masked admin session |
 | `ft admin me` | Current superadmin identity |
-| `ft admin workspaces list\|get\|create\|update\|suspend\|restore` | Tenants (`--status`, `--q`); `suspend` confirms unless `--yes` |
+| `ft admin workspaces list\|get\|create\|update\|suspend\|restore` | Tenants (`--status`, `--q`); `update --data` takes `webTemplate` / `customDomain`; `suspend` confirms unless `--yes` |
+| `ft admin workspaces plan <id>` | Assisted plan assignment: `--data '{"planSlug":"spark\|star\|icon\|legend"}'`. Cancels a linked Stripe subscription first; aborts with 409 if that fails |
 | `ft admin users list\|get\|update <id>` | Global users (`--q`, `--role`, `--workspace`) |
 | `ft admin plans list\|get\|create\|update` | Platform plans |
 | `ft admin feature-flags list` · `set <key> --data '{"scope":"…","enabled":true}'` | Feature flags |

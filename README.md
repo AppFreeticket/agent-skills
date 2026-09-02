@@ -86,7 +86,7 @@ directions — the CLI for terminals and scripts, the MCP server for chat client
 | Skill | Scope | Install |
 |---|---|---|
 | [`freeticket-cli`](./skills/freeticket-cli) | Drive the official `ft` CLI (`@freeticket/cli`): log in (browser device flow), list/inspect **and** create/update/delete events, dates, ticket types, sales, membership plans, venues, staff; publish events; cancel/refund sales; run CFO reconciliation; export anything to CSV. Superadmin via `ft admin …`. `--json`/`--csv` for automation. | `npx skills add AppFreeticket/agent-skills@freeticket-cli` |
-| [`freeticket-mcp`](./skills/freeticket-mcp) | Connect to and operate the official MCP server (`@freeticket/mcp`): local stdio setup, remote connectors on claude.ai via the embedded OAuth 2.1 server, the three credential layers (anonymous B2C → workspace B2B → superadmin), all 87 tools, and the MCP Apps view that renders lists and reports inside the host. | `npx skills add AppFreeticket/agent-skills@freeticket-mcp` |
+| [`freeticket-mcp`](./skills/freeticket-mcp) | Connect to and operate the official MCP server (`@freeticket/mcp`): local stdio setup, remote connectors on claude.ai via the embedded OAuth 2.1 server, the three credential layers (anonymous B2C → workspace B2B → superadmin), all 103 tools, and the MCP Apps view that renders lists and reports inside the host. | `npx skills add AppFreeticket/agent-skills@freeticket-mcp` |
 | [`freeticket-eventos`](./skills/freeticket-eventos) | Event & community advisor: applies FreeTicket's brand voice and real product rules (visibility, member-gated presales, platform fee, time zone, required ticket fields), and **audits events with live data** (via `ft`) to recommend sales and retention improvements. | `npx skills add AppFreeticket/agent-skills@freeticket-eventos` |
 
 ---
@@ -128,7 +128,7 @@ agent-skills/
     │   └── references/commands.md
     ├── freeticket-mcp/
     │   ├── SKILL.md
-    │   └── references/tools.md      # 87 tools + what is deliberately absent
+    │   └── references/tools.md      # 103 tools + what is deliberately absent
     └── freeticket-eventos/
         ├── SKILL.md
         └── references/
