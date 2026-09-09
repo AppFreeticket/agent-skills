@@ -93,9 +93,15 @@ Suggested structure (2–4 short paragraphs or bullets):
 
 Tone: invite, don't shout. Short sentences. Benefit before logistics.
 
-### Ticket recommendations (`recommendations`)
+### What the attendee should know
 
-**Mandatory** field. What the attendee should know/bring:
+This is **not a separate API field** - the B2B contract has no `recommendations`
+on a ticket type, and sending one is rejected (`additionalProperties: false`).
+It belongs at the end of the ticket `description`, which is the only copy field
+the schema has. Keep it there and it survives; invent a field and the create
+fails.
+
+What to cover:
 - What the ticket includes (and what it doesn't).
 - Practical tips: arrive early, bring ID, dress code, age limits, accessibility.
 - One actionable line per item.

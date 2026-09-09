@@ -138,6 +138,34 @@ agent-skills/
 
 ---
 
+## Standards conformance
+
+This repo is a plugin twice over, on purpose.
+
+| Manifest | Standard | Consumer |
+|---|---|---|
+| `plugin.json` + `mcp.json` | [Agent Plugins 1.0.0](https://agent-plugins.org/specification) | any conforming client |
+| `.claude-plugin/plugin.json` + `marketplace.json` | Claude Code's own plugin format | Claude Code |
+
+The two describe the same plugin and the same MCP server, and they are expected
+to differ in exactly one place: the transport is spelled `streamable-http` under
+the Agent Plugins schema and `http` under Claude Code's. Same transport, two
+vocabularies. **Everything else must match** - name, version, server URL.
+
+Nothing is generated here and there is no build step, so that consistency is
+checked instead:
+
+```bash
+node scripts/validate-plugin.mjs
+```
+
+It validates the closed manifest schema (only the ten permitted top-level
+fields), the `mcp.json` shape and its transport variants, the schema-version
+match between the two files, skill discovery (`skills/*/SKILL.md`), and the
+cross-manifest identity. CI runs it on every push and pull request, so a typo
+in a transport type fails here rather than in someone else's terminal at
+install time.
+
 ## Related
 
 - CLI: [`@freeticket/cli`](https://github.com/AppFreeticket/freeticket-cli) (binary `ft`)

@@ -70,7 +70,7 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | ▣ `sales_list` | `status? channel? event? eventDate? reference? buyer? from? to? limit? cursor? workspace?` | |
 | `sales_get` | `id` | |
 | `sales_tickets` | `id` | Individual tickets/attendees of a sale |
-| `sales_create` | `buyer items channel comp notes?` | Comps and programmatic orders |
+| `sales_create` | `buyer items channel comp notes?` | Comps and programmatic orders — **not idempotent, see below** |
 | ⚠ `sales_cancel` | `id acknowledge_open_payment?` | The flag is required when the payment is still open at the gateway |
 | ⚠ `sales_refund` | `id acknowledge_manual?` | The flag confirms the money goes back by hand, outside the gateway |
 
@@ -208,3 +208,9 @@ Cross-tenant. Everything here affects other people's workspaces.
 
 A guard test in the server (`src/coverage.test.ts`) fails if the contract grows a
 new operation and nobody gives it a tool, so this list stays honest.
+
+> **`sales_create` is not idempotent.** `POST /sales` takes no `Idempotency-Key`
+> (unlike `public_orders_create` and check-in), so a blind retry after a network
+> timeout creates a **second real sale or comp**. Before retrying, confirm with
+> `sales_list` filtered by `buyer` or `reference` whether the first one landed.
+> Tracked upstream as AppFreeticket/free-admin#677.
