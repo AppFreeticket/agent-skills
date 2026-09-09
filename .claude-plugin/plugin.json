@@ -2,7 +2,7 @@
   "name": "freeticket",
   "displayName": "FreeTicket",
   "version": "0.2.0",
-  "description": "Operate FreeTicket from your agent: skills for the ft CLI, the MCP server and event copy, plus the freeticket MCP server (B2B, superadmin and public contracts as tools).",
+  "description": "Operate FreeTicket from any agent: skills for the ft CLI, event copy, and the MCP server that exposes the B2B, superadmin and public contracts as tools.",
   "author": {
     "name": "FreeTicket",
     "url": "https://freeticket.co"

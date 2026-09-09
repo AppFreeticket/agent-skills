@@ -1,6 +1,6 @@
 ---
 name: freeticket-eventos
-description: FreeTicket advisor for creating, writing and auditing events, and for growing an organizer/artist's community. It applies FreeTicket's brand voice (buyer-facing copy is written in neutral Spanish — tú/impersonal, never voseo, since the audience is LATAM), the real product rules (visibility, member-gated presales, platform fee, time zone, required ticket fields) and, using live data pulled with the `ft` CLI, audits event performance and recommends concrete improvements to copy, price, presales and community retention. Use it when the user wants to create or improve an event, write its description/recommendations, find out why an event isn't selling, or ask for recommendations to grow and retain their audience.
+description: FreeTicket advisor for creating, writing and auditing events, and for growing an organizer/artist's community. It applies FreeTicket's brand voice (buyer-facing copy is written in neutral Spanish — tú/impersonal, never voseo, since the audience is LATAM), the real product rules (visibility, member-gated presales, platform fee, time zone, ticket copy) and, using live data pulled with the `ft` CLI, audits event performance and recommends concrete improvements to copy, price, presales and community retention. Use it when the user wants to create or improve an event, write its copy, find out why an event isn't selling, or ask for recommendations to grow and retain their audience.
 ---
 
 # FreeTicket — events and community
@@ -17,7 +17,7 @@ improvements.
 
 ## When to use this skill
 
-- Create a new event or improve an existing one (title, description, recommendations, prices, dates).
+- Create a new event or improve an existing one (title, description, prices, dates).
 - Write or fix public-facing copy following FreeTicket's voice.
 - Audit why an event isn't selling, or how overall performance is going.
 - Recommend actions to grow and retain the community (memberships, presales, content).
@@ -36,9 +36,13 @@ Before recommending anything, respect how FreeTicket actually works:
 2. **B2C portal visibility:** an event is only public if the **event is `PUBLISHED`**
    and it has **at least one `PUBLISHED`, future date**. Publishing the event must
    propagate the status to its dates.
-3. **Required ticket fields:** when creating tickets in the admin, **`description`**
-   and **`recommendations`** (what's included / what to advise the attendee) are
-   mandatory. Never leave them empty.
+3. **Ticket copy:** `description` is the only copy field the B2B contract has for
+   a ticket type, and it is **optional** in the schema - but a ticket with an empty
+   description sells worse, so treat it as required by editorial policy, not by the
+   API. Put what the ticket includes *and* what the attendee should know (arrive
+   early, bring ID, age limit) in that one field: there is no separate
+   `recommendations` field in the contract, and sending one fails with a 422
+   because `TicketTypeCreate` is `additionalProperties: false`.
 4. **Member-gated presales:** presales are **members-only**. The portal shows a
    countdown + membership CTA. A workspace with no membership plans **cannot**
    enable presales — create a plan first.
@@ -52,7 +56,9 @@ Before recommending anything, respect how FreeTicket actually works:
 
 **To create / improve an event (no data):**
 1. Ask the minimum: event type, audience, date + zone, venue, price range.
-2. Write title + description + `recommendations` per `references/language.md` (in Spanish).
+2. Write title + description per `references/language.md` (in Spanish) - the
+   what-to-know copy goes at the end of the ticket description, not in a field of
+   its own.
 3. Define ticket types with coherent net pricing (remember the 10%).
 4. Publish checklist: event + date `PUBLISHED` and future, fields complete.
 

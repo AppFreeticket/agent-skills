@@ -253,6 +253,12 @@ ft reports export attendees --event evt_123 > attendees.csv
 ft admin workspaces suspend ws_123 --yes
 ```
 
+> **`sales create` is not idempotent.** `POST /sales` takes no `Idempotency-Key`
+> (unlike `/public/orders` and check-in), so a blind retry after a network
+> timeout creates a **second real sale or comp**. Before retrying, check whether
+> the first one landed: `ft sales list --buyer <email> --from <today>` or
+> `--reference <ref>`. Tracked upstream as AppFreeticket/free-admin#677.
+
 ## Delegating to agents
 
 This skill is the *hands*; the umbrella's agents are the *head*. When a request is

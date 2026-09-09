@@ -39,7 +39,8 @@ reason in **net** terms.
 ## 3. Diagnostic heuristics
 
 - **High abandon (> ~40%):** perceived price too high, few payment methods, or
-  unclear copy. Review `description`/`recommendations` and the price range.
+  unclear copy. Review the ticket `description` (which is where what-to-know copy
+  lives - there is no separate field) and the price range.
 - **Flat pace far from the date:** missing early push → enable a **member presale**
   or a limited "early bird" type.
 - **One ticket type carries everything:** missing price ladder (general /

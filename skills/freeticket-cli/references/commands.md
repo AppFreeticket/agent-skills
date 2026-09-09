@@ -117,7 +117,7 @@ Headless credential for CI / cron — no browser, no device flow. The plaintext
 (`ft_live_…`) is shown **once**, in the `create` response.
 
 ```bash
-ft api-keys create --name "finance-sync" --scope read   # scope: read (default) | write
+ft api-keys create "finance-sync" --scope read   # scope: read (default) | write
 ft api-keys list
 ft api-keys revoke <id> --yes
 ```
