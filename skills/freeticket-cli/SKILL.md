@@ -262,7 +262,10 @@ ft admin workspaces suspend ws_123 --yes
 ## Delegating to agents
 
 This skill is the *hands*; the umbrella's agents are the *head*. When a request is
-bigger than one command, route it — don't improvise the whole chain inline:
+bigger than one command, route it — don't improvise the whole chain inline.
+
+The quoted examples below are **in Spanish on purpose**: they are the words a
+FreeTicket user actually types. Everything else in this file is English.
 
 - **Multi-step business goals** ("lanzá el evento de junio con sus fechas y tipos
   de ticket", "auditá y corregí precios") → hand the plan to **`ai-architect`**.

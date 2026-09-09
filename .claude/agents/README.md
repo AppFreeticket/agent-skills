@@ -1,7 +1,9 @@
-# Agentes del repo `agent-skills`
+# Agents for the `agent-skills` repo
 
-| Agente | Cuándo usarlo |
+| Agent | When to use it |
 |---|---|
-| [`skill-smith`](./skill-smith.md) | Crear o revisar una skill: frontmatter, progressive disclosure, voz de marca. |
+| [`skill-smith`](./skill-smith.md) | Create or review a skill: frontmatter, progressive disclosure, brand voice. |
 
-Las skills se instalan con `npx skills add AppFreeticket/agent-skills@<skill>`.
+This repo is also the `freeticket` plugin ([Agent Plugins 1.0.0](https://agent-plugins.org)).
+Individual skills install with `npx skills add AppFreeticket/agent-skills@<skill>`;
+the whole plugin installs through the marketplace manifest in this repo.
