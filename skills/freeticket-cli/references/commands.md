@@ -11,7 +11,7 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 
 | Command | Description |
 |---|---|
-| `ft login` | Browser device flow: mints a session, validates it against `/me`, and **adds** it as an account in `~/.freeticket/config.json` (0600) named after its email. Other accounts stay. Pins no workspace. |
+| `ft login` | Browser device flow: mints a session, validates it against `/me`, and **adds** it as an account in `~/.freeticket/config.json` (0600) named after its email. Other accounts stay; a stored account of the same user (or a lone legacy `default`) is replaced, so re-logging in after a `401` never duplicates. Pins no workspace. |
 | `ft login --account <name>` | Same, stored under `<name>`; an existing account with that name is replaced. |
 | `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
 | `ft login --workspace <id>` | Pin the new account to one workspace. |
@@ -29,7 +29,9 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 
 A config written by an older CLI (a single top-level `apiKey`) is read as the
 account `default`. `FT_API_KEY` overrides every stored account and is the only
-one in effect, so CI never fans out across logins on the machine.
+one in effect, so CI never fans out across logins on the machine; it keeps the
+file's pinned workspace (`FT_WORKSPACE_ID` wins) and fails on `--account`.
+When every account fails to answer, the command exits 1 naming each error.
 
 **Fan-out rules.** With nothing pinned, lists and the row-shaped reports read
 every account × every reachable workspace (a workspace shared by two accounts is
@@ -221,7 +223,7 @@ Uniform shape and exit code `1`:
 
 | HTTP | Meaning | Action |
 |---|---|---|
-| `401` | Session missing/invalid/expired | Run `ft login` again (CI: refresh the token). |
+| `401` | Session missing/invalid/expired | Run `ft login` again — it replaces that account, no duplicate (CI: refresh the token). |
 | `403` | Insufficient role for the endpoint | Log in as a higher-role user. |
 | `404` | Resource outside the active workspace | Check `--workspace` / `--account` / `ft whoami`. |
 | `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |

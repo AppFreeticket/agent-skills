@@ -71,7 +71,9 @@ themselves through their own browser. There is **no backend-issued key per user*
    URL and opens the user's browser.
 2. **Show the user the code and URL** from that output and ask them to approve
    in the browser. The command keeps polling and finishes on its own once they do.
-3. After `✓ Account … saved`, retry the original command. The session persists in
+3. After `✓ Account … saved`, retry the original command. Re-running `ft login`
+   for an expired session replaces that same account (matched by email, or a
+   lone legacy `default`); it does not leave a duplicate behind. The session persists in
    `~/.freeticket/config.json` (per machine, all projects) — log in once, reuse
    everywhere.
 
@@ -85,7 +87,9 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 **flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > file > defaults**.
 `FT_API_URL` defaults to `https://admin.appfreeticket.com` (without `/api/v1`).
 `FT_API_KEY` is a **single** account (CI): when it is set, stored logins are
-ignored and nothing fans out across them.
+ignored and nothing fans out across them. It still honors a workspace pinned in
+the file (`FT_WORKSPACE_ID` wins over it), and it rejects `--account` — unset it
+to use stored accounts.
 
 ### Accounts and workspaces: by default, everything
 
