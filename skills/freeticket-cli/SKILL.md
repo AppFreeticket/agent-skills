@@ -17,7 +17,7 @@ mirrors what the web app does — anything you can do on the page, you can do he
 - The user wants real data: "how many sales do I have?", "list my events", "export buyers".
 - The user wants to **change** something: "create an event", "publish it", "refund sale X", "raise a ticket-type price", "suspend a tenant".
 - You need to run `ft ...` or automate a report/mutation for `jq`/scripts.
-- Manage the session (`ft login`/`logout`/`config`) or switch workspace.
+- Manage the session (`ft login`/`logout`/`config`), several accounts (`ft account`), or narrow to one workspace.
 - Another skill (e.g. `freeticket-eventos`) needs live data to audit or an action to perform.
 
 ## Setup (once)
@@ -39,7 +39,7 @@ npm install -g @freeticket/cli@latest && ft whoami
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
 >
-> This skill documents **`ft` ≥ 0.9.0** (skill revision 2026-09-02, contract
+> This skill documents **`ft` ≥ 0.10.0** (skill revision 2026-10-13, contract
 > B2B 1.7.0 / admin 1.3.0). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
 > *stderr*; when you see it, tell the user to run
@@ -71,7 +71,7 @@ themselves through their own browser. There is **no backend-issued key per user*
    URL and opens the user's browser.
 2. **Show the user the code and URL** from that output and ask them to approve
    in the browser. The command keeps polling and finishes on its own once they do.
-3. After `✓ Session saved`, retry the original command. The session persists in
+3. After `✓ Account … saved`, retry the original command. The session persists in
    `~/.freeticket/config.json` (per machine, all projects) — log in once, reuse
    everywhere.
 
@@ -84,14 +84,51 @@ tell the user to run `ft login` in their own terminal, then continue.
 Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 **flags > env (`FT_API_URL`/`FT_API_KEY`/`FT_WORKSPACE_ID`) > file > defaults**.
 `FT_API_URL` defaults to `https://admin.appfreeticket.com` (without `/api/v1`).
+`FT_API_KEY` is a **single** account (CI): when it is set, stored logins are
+ignored and nothing fans out across them.
+
+### Accounts and workspaces: by default, everything
+
+One person can hold **several FreeTicket logins** (their own organization, an
+agency, a client's account). Each `ft login` **adds an account** — named after
+its email, or `ft login --account <name>` — and the others stay. Each account
+can reach several workspaces (organizations). Login pins nothing.
+
+**With nothing pinned, every command that lists reads ALL accounts and ALL
+their workspaces**: `ft <resource> list` and the row-shaped reports (`by-event`,
+`timeseries`, `inventory`, `financials`, `reconciliation`). Rows are tagged with
+`workspaceId`/`workspaceName`, plus `account` when more than one is involved. A
+workspace two accounts share is read once; `--limit` is split across all of
+them; one that fails is named on stderr and the rest still print. `--cursor`
+needs a single workspace (pin one, then paginate). `ft whoami` and
+`ft workspace list` also show every account.
+
+Narrow it when the user is talking about one of them:
+
+| Scope | One command | Persisted | Undo |
+|---|---|---|---|
+| One account | `--account <name>` | `ft account use <name>` | `ft account clear` |
+| One workspace | `--workspace <id>` | `ft workspace use <slug>` (also pins the account that reaches it) | `ft workspace clear` |
+
+`ft account list` shows what is stored (`*` = pinned); `ft account remove <name>`
+or `ft logout --account <name>` drops one, `ft logout --all` drops every one.
+
+**Commands that are not lists need exactly one account** — `get`, `create`,
+`update`, `delete`, actions (`publish`, `cancel`, `refund`, `tickets checkin`),
+`reports summary` (KPIs are not summed across tenants). With several accounts
+stored and none pinned they fail with `Several accounts are stored (…)`: ask the
+user which one (or take it from the `account` column of the list you just
+read) and pass `--account <name>`. **Never guess the account on a mutation.**
 
 ## Commands
 
 | Command | What it does | Min role |
 |---|---|---|
-| `ft login` | Browser login (device flow); `--key <key>` for CI | VIEWER |
-| `ft whoami` | Active user + workspaces | VIEWER |
-| `ft config` · `ft logout` | Show config (masked session) · log out | — |
+| `ft login` | Add an account: browser login (device flow); `--account <name>` names it (default: its email); `--key <key>` for CI | VIEWER |
+| `ft whoami` | User + workspaces of every account in scope | VIEWER |
+| `ft account list\|use\|clear\|remove` | Stored accounts: list · pin one · back to all · remove | — |
+| `ft workspace list\|use\|clear\|show` | Workspaces of every account · pin one (and its account) · back to all · show the pinned one | VIEWER |
+| `ft config` · `ft logout` | Show config (masked sessions) · remove the pinned/only account (`--account <name>`, `--all`) | — |
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
@@ -116,8 +153,8 @@ Config lives in `~/.freeticket/config.json` (mode `0600`). Precedence:
 | `ft reports reconciliation` | CFO: cross-check Mercado Pago ↔ sale ↔ Siigo invoice (`--from` `--to`, `--match`, `--provider`) | ADMIN |
 | `ft reports export buyers\|attendees\|subscribers\|reconciliation` | Export to CSV (buyers/attendees take `--event` `--event-date` `--from` `--to` `--status`) | ADMIN |
 
-Common flags on all: `--json` (raw output for `jq`), `--workspace <id>`
-(another workspace). Lists also take `--limit <n>` (1–100, default 20),
+Common flags on all: `--json` (raw output for `jq`), `--workspace <id>` (only
+that workspace), `--account <name>` (only that stored account). Lists also take `--limit <n>` (1–100, default 20),
 `--cursor <id>`, and **`--csv`** (any list → CSV on stdout). Writes take
 **`--data <json>`** (inline JSON or `@file.json`); `delete` asks for confirmation
 unless `--yes`.

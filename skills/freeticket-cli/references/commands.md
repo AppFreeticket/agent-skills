@@ -1,23 +1,44 @@
 # `ft` command reference
 
 Detail for every command in the FreeTicket CLI. Most commands hit the **B2B v1**
-contract (`FT_API_URL` + `/api/v1`) and are **tenant-scoped**: you only see
-resources of the active workspace; an id from another workspace returns `404`
-(anti-IDOR). The `ft admin …` commands are the exception — a separate, cross-tenant
+contract (`FT_API_URL` + `/api/v1`) and are **tenant-scoped**: each request sees
+one workspace, and an id from another workspace returns `404` (anti-IDOR). With
+nothing pinned the CLI repeats list requests over every stored account and every
+workspace each one reaches, and tags the rows with where they came from. The `ft admin …` commands are the exception — a separate, cross-tenant
 contract (`/api/admin`) with its own auth (see the Admin section below).
 
 ## Auth and config
 
 | Command | Description |
 |---|---|
-| `ft login` | Browser device flow: mints a session, stores it in `~/.freeticket/config.json` (0600), validates against `/me`. |
+| `ft login` | Browser device flow: mints a session, validates it against `/me`, and **adds** it as an account in `~/.freeticket/config.json` (0600) named after its email. Other accounts stay. Pins no workspace. |
+| `ft login --account <name>` | Same, stored under `<name>`; an existing account with that name is replaced. |
 | `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
-| `ft whoami` | Prints the session's owning user, their role and accessible `workspaces[]`. |
-| `ft config` | Shows the effective config with the credential masked (`--json` for scripts). |
-| `ft logout` | Logs out — removes the stored session from the config file. |
-| `ft workspace list` | Workspaces the session can access. |
-| `ft workspace use <id>` | Persist the active workspace (sent as `X-Workspace-Id`). |
-| `ft workspace show` | Print the active workspace. |
+| `ft login --workspace <id>` | Pin the new account to one workspace. |
+| `ft whoami` | One account: its user, role and `workspaces[]`. Several: one row per account (account, email, name, workspaces); `--json` = array with `account` on each. |
+| `ft config` | Effective config: `apiUrl`, `activeAccount`, and every stored account with its credential masked (`--json` for scripts). |
+| `ft logout` | Removes the pinned account, or the only one. Several and none pinned → fails; use `--account <name>` or `--all`. |
+| `ft account list` | Stored accounts (`*` = pinned): name, apiUrl, pinned workspace, masked session. Alias `ft accounts`. |
+| `ft account use <name>` | Pin every command to one account. |
+| `ft account clear` | Unpin: back to reading every account. |
+| `ft account remove <name>` | Remove one stored account (= `ft logout --account <name>`). |
+| `ft workspace list` | Workspaces every account in scope reaches (`account` column when several). |
+| `ft workspace use <id\|slug>` | Pin one workspace (sent as `X-Workspace-Id`) and the account that reaches it. |
+| `ft workspace clear` | Unpin workspaces (and the account): lists read everything again. |
+| `ft workspace show` | Print the pinned (or default) workspace of the one account in scope. |
+
+A config written by an older CLI (a single top-level `apiKey`) is read as the
+account `default`. `FT_API_KEY` overrides every stored account and is the only
+one in effect, so CI never fans out across logins on the machine.
+
+**Fan-out rules.** With nothing pinned, lists and the row-shaped reports read
+every account × every reachable workspace (a workspace shared by two accounts is
+read once), tag rows `workspaceId`/`workspaceName` (+ `account` when several),
+split `--limit` across all of them, and name a failing account/workspace on
+stderr while the rest print. `--cursor` needs one workspace. Commands that are
+not lists (get/create/update/delete, actions, `reports summary`, exports) need
+exactly one account: with several stored and none pinned they fail with the
+account names — pass `--account <name>`.
 
 The credential acts as its owning user, **with that user's role**. A CI key is
 never stored in plaintext on the backend (only its `sha-256`); prefix `ft_live_`.
@@ -173,7 +194,8 @@ non-SUPER_ADMIN session returns `403`. Admin lists also accept `--csv`.
 |---|---|
 | `--json` | Raw JSON to stdout (parseable). On **lists = data array only**; use `--raw` for the paginated envelope. |
 | `--raw` | On lists: the full `{ data, page }` envelope (`page.nextCursor`/`hasMore`) for scripted pagination. |
-| `--workspace <orgId>` | Run the command against another accessible workspace (mirrors `X-Workspace-Id`). |
+| `--workspace <orgId>` | Only this workspace (mirrors `X-Workspace-Id`). On lists across several accounts it routes to the account that reaches it. |
+| `--account <name>` | Only this stored account. Required on non-list commands when several are stored and none is pinned. |
 | `--limit <n>` | Page size on lists, 1–100 (default 20). |
 | `--cursor <id>` | Next page; the value comes from the `page.nextCursor` hint. `--all` auto-paginates. |
 
@@ -201,7 +223,7 @@ Uniform shape and exit code `1`:
 |---|---|---|
 | `401` | Session missing/invalid/expired | Run `ft login` again (CI: refresh the token). |
 | `403` | Insufficient role for the endpoint | Log in as a higher-role user. |
-| `404` | Resource outside the active workspace | Check `--workspace` / `ft whoami`. |
+| `404` | Resource outside the active workspace | Check `--workspace` / `--account` / `ft whoami`. |
 | `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |
 
 ## Data conventions

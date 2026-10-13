@@ -23,6 +23,13 @@ file is for.
   `.claude-plugin/plugin.json`, which had drifted apart.
 
 ### Added
+- **`freeticket-cli`: several accounts, and "everything" as the default
+  scope.** Documents `ft login --account`, `ft account list|use|clear|remove`,
+  `--account <name>`, and that with nothing pinned every list and row-shaped
+  report reads all accounts and all their workspaces (rows tagged `account` /
+  `workspaceName`). Mutations need exactly one account when several are stored;
+  `FT_API_KEY` stays a single CI account. Also reflects that login no longer
+  pins the first workspace.
 - **`scripts/validate-plugin.mjs`** - validates the repo against the
   [Agent Plugins specification](https://agent-plugins.org/specification) 1.0.0:
   the closed manifest schema, the `mcp.json` shape and transport types, skill
