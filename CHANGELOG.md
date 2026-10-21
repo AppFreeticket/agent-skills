@@ -22,6 +22,16 @@ file is for.
   confirmation (`--yes` skips it), when the update notice stays quiet
   (`--json`/`--raw`/`--csv`, CI, no TTY, `FT_NO_UPDATE_CHECK=1`), and the
   `409`/`429` errors.
+- **`freeticket-mcp` now documents `@freeticket/mcp` 0.15.0** (freeticket-mcp#27):
+  117 tools (B2B 88, superadmin 23, public 6) against contracts 1.20.0 / 1.5.1 /
+  0.9.1. New tools: `events_cancel`, `sales_attempts`, `tickets_reassign`,
+  `staff_get`, `staff_delete`, `webhooks_update`, `settlements_get`,
+  `content_posts_create`, `workspaces_create`, `customer_order_pending`,
+  `customer_order_get`, `customer_order_release`, `admin_workspaces_plan_get`,
+  `admin_workspaces_delete` (⚠ on `events_cancel`, `staff_delete`,
+  `customer_order_release`, `admin_workspaces_delete`). `ticket_types_create`
+  `currency` is `COP` only. "Not exposed" now lists sign-up, buyer auth and the
+  headless checkout, and the MCP-vs-CLI table says `ft signup` has no tool.
 
 ### Fixed
 - **Partial refunds were documented as `{"amount": …}`,** which the contract
