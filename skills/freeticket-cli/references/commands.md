@@ -11,6 +11,7 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 
 | Command | Description |
 |---|---|
+| `ft signup --email <e> --name <n>` | Public, no stored account needed: creates the account and sends a verification email (which also sets the password); then `ft login`. `--workspace-name <n>` also creates the first workspace on the free Spark plan. Same `202` for an existing email. |
 | `ft login` | Browser device flow: mints a session, validates it against `/me`, and **adds** it as an account in `~/.freeticket/config.json` (0600) named after its email. Other accounts stay; a stored account of the same user (or a lone legacy `default`) is replaced, so re-logging in after a `401` never duplicates. Pins no workspace. |
 | `ft login --account <name>` | Same, stored under `<name>`; an existing account with that name is replaced. |
 | `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
@@ -26,6 +27,7 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 | `ft workspace use <id\|slug>` | Pin one workspace (sent as `X-Workspace-Id`) and the account that reaches it. |
 | `ft workspace clear` | Unpin workspaces (and the account): lists read everything again. |
 | `ft workspace show` | Print the pinned (or default) workspace of the one account in scope. |
+| `ft workspace create --name <n> --slug <s>` | Create your own workspace; the caller becomes its ADMIN. Goes into the caller's organization (plan quota: spark 1, star 3, icon 7) or a new one on Spark. Staff of another tenant get `409 ALREADY_HAS_ACCESS`. `--account` when several are stored. |
 
 A config written by an older CLI (a single top-level `apiKey`) is read as the
 account `default`. `FT_API_KEY` overrides every stored account and is the only
@@ -60,16 +62,21 @@ minimum role; insufficient → `403`.
 | `ft ticket-types get <id>` | — | VIEWER |
 | `ft sales list` | `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` `--limit` `--cursor` | STAFF |
 | `ft sales get <id>` | — | STAFF |
-| `ft sales tickets <id>` | — (individual tickets/attendees of a sale) | STAFF |
+| `ft sales tickets <id>` | — (individual tickets/attendees of a sale; their `id` is what `refund --data '{"items":[…]}'` takes) | STAFF |
+| `ft sales attempts <id>` | — (payment attempt history, newest first: declines, approvals, refunds) | STAFF |
 | `ft tickets access <code>` | — (access status; does not admit) | STAFF |
 | `ft plans list` · `get <id>` | `--limit` `--cursor` | VIEWER |
 | `ft plans subscribers <id>` | — (subscribers/members of a plan) | VIEWER |
 | `ft discounts list` | `--event` `--active true\|false` `--limit` `--cursor` | ADMIN |
 | `ft webhooks list` | `--limit` `--cursor` | ADMIN |
 | `ft venues list` · `get <id>` | `--limit` `--cursor` | VIEWER |
+| `ft staff get <id>` | — | ADMIN |
 | `ft staff list` | `--workspace-ids <ids>` (comma-separated, max 25 — one call, rows tagged by workspace) `--limit` `--cursor` | ADMIN |
 | `ft settlements list` | `--event` `--status SENT\|AWAITING_PAYMENT\|PAID` `--limit` `--cursor` | ADMIN |
+| `ft settlements get <id>` | — | ADMIN |
 | `ft settlements document <id>` | `--proof <fileName>` (payment proof instead of the receipt) | ADMIN |
+| `ft content-videos list` · `content-posts list` · `content-lives list\|get <id>` | `--limit` `--cursor` | ADMIN |
+| `ft content-lives playback-token` | `--data` (signed playback token: 30 min live / 1 h video). Needs an enterprise service API key; `memberOnly` content also needs a buyer session | service key |
 | `ft api-keys list` | `--limit` `--cursor` | VIEWER |
 | `ft reports summary` | `--period 7d\|30d\|90d\|1y` | VIEWER |
 | `ft reports financials` | `--event` `--past`, `--csv` \| `--json` | ADMIN |
@@ -103,8 +110,9 @@ Any list also accepts `--csv` (CSV on stdout, columns = the table columns).
 ## Writes
 
 Mutations take a JSON body via `--data` (inline `'{"k":1}'` or `@file.json`).
-`delete` confirms interactively unless `--yes` (and auto-aborts when stdin isn't
-a TTY, so it's safe in pipelines). The body shape is the request schema of the
+Destructive commands (`delete`, `events cancel`, `staff delete`, `api-keys revoke`)
+confirm interactively unless `--yes` (and exit 1 when stdin isn't a TTY, so
+they're safe in pipelines). The body shape is the request schema of the
 matching endpoint in the OpenAPI contract — when unsure, check the spec, don't guess.
 
 | Command | Args / body | Role |
@@ -113,6 +121,7 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft events update <id>` | `--data` (partial) | ADMIN |
 | `ft events delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft events publish <id>` | — | ADMIN |
+| `ft events cancel <id>` | `--yes` to skip confirm. Every date goes CANCELLED and the waiting room turns off; sales and tickets are kept, nothing is refunded | ADMIN |
 | `ft event-dates list <eventId>` | — | VIEWER |
 | `ft event-dates create <eventId>` | `--data` | ADMIN |
 | `ft event-dates update <eventId> <dateId>` | `--data` | ADMIN |
@@ -122,17 +131,21 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft sales create` | `--data` (`{buyer:{name,email,phone?}, items:[{ticketTypeId,quantity}], channel?, comp?, notes?}`) | ADMIN |
 | `ft sales cancel <id>` | `--data '{"acknowledge_open_payment":true}'` when the payment is still open at the gateway | ADMIN |
-| `ft sales refund <id>` | `--data` optional (e.g. `{"amount": 20000}` for partial, `{"acknowledge_manual":true}` when the money goes back by hand) | ADMIN |
+| `ft sales refund <id>` | `--data` optional: `{"items":["…"]}` refunds only those tickets (prorated; MercadoPago or cash only, `409 GATEWAY_REFUND_NOT_SUPPORTED` otherwise), `{"block_seats":true}` keeps refunded numbered seats off sale, `{"acknowledge_manual":true}` when the money goes back by hand. Checked-in tickets answer `409 ITEM_ALREADY_CHECKED_IN`, even on a full refund; `503 GATEWAY_REFUND_PENDING` is safe to repeat | ADMIN |
 | `ft tickets checkin <code>` | — (idempotent; re-running never double-admits) | STAFF |
 | `ft tickets resend <code>` | — (resends the sale's confirmation email/QR) | ADMIN |
+| `ft tickets reassign <code>` | `--data` (`{eventDateId?, ticketTypeId?, seatLabel?}`); with only `eventDateId` the type is matched by name on the new date (`422` if ambiguous: pass `ticketTypeId`). No price difference charged or refunded | ADMIN |
 | `ft subscriptions cancel <id>` | — (idempotent; keeps the original cancel date) | ADMIN |
 | `ft discounts create` | `--data` (`{code, type PERCENT\|FIXED, value, eventId?, maxUses?, startsAt?, endsAt?}`) | ADMIN |
 | `ft discounts update <id>` | `--data` (`{active?, value?, maxUses?, startsAt?, endsAt?}`) | ADMIN |
 | `ft discounts delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft webhooks create` | `--data` (`{url, events[], secret?}`) — returns `signingSecret` once | ADMIN |
+| `ft webhooks update <id>` | `--data` (`{url?, events?, active?}`) — keeps the `signingSecret` (delete + create would rotate it) | ADMIN |
 | `ft webhooks delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
 | `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
+| `ft staff delete <id>` | `--yes` to skip confirm. Revokes access to this workspace only; an ADMIN cannot revoke another admin (`403`) or itself (`409`) | ADMIN |
+| `ft content-posts create` | `--data` (`{type TEXT\|IMAGE\|ARTICLE, locked, title?, body?, content?, imageUrl?, eventId?, …}`); ARTICLE needs `title` + Markdown `body` | ADMIN |
 
 ## Service credentials (`ft api-keys …`)
 
@@ -175,6 +188,8 @@ ft admin login --session <better-auth.session_token>   # validates vs /api/admin
 | `ft admin workspaces plan <id>` | `--data '{"planSlug":"spark\|star\|icon\|legend"}'` `--yes`; assisted sale, no Stripe self-service | SUPER_ADMIN |
 | `ft admin workspaces suspend <id>` | `--yes` to skip confirm | SUPER_ADMIN |
 | `ft admin workspaces restore <id>` | — | SUPER_ADMIN |
+| `ft admin workspaces plan-show <id>` | — (current plan + subscription; `stripeLinked`) | SUPER_ADMIN |
+| `ft admin workspaces delete <id>` | `--yes` to skip confirm. Soft delete: must be suspended first, `409` with a CONFIRMED sale; does not cancel Stripe | SUPER_ADMIN |
 | `ft admin users update <id>` | `--data` | SUPER_ADMIN |
 | `ft admin plans list` · `get <id>` · `create` · `update <id>` | `--data` (create/update) | SUPER_ADMIN |
 | `ft admin feature-flags list` | — (no pagination) | SUPER_ADMIN |
@@ -226,7 +241,9 @@ Uniform shape and exit code `1`:
 | `401` | Session missing/invalid/expired | Run `ft login` again — it replaces that account, no duplicate (CI: refresh the token). |
 | `403` | Insufficient role for the endpoint | Log in as a higher-role user. |
 | `404` | Resource outside the active workspace | Check `--workspace` / `--account` / `ft whoami`. |
+| `409` | Conflicts with current state | Read `error.code` (e.g. `ITEM_ALREADY_CHECKED_IN`, `REFUND_IN_PROGRESS`, `ALREADY_HAS_ACCESS`). |
 | `422` | Validation failed on a write | Read `details[]` (`path: message`) and fix `--data`. |
+| `429` | Rate limited (`signup`, `staff create`, …) | Wait and retry; don't loop. |
 
 ## Data conventions
 

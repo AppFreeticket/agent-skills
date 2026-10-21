@@ -9,7 +9,25 @@ file is for.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
+### Changed
+- **`freeticket-cli` now documents `ft` ≥ 0.11.1 against contract B2B 1.20.0 /
+  admin 1.5.1** (was 0.10.0 against 1.7.0 / 1.3.0). New commands:
+  `ft events cancel`, `ft sales attempts`, `ft tickets reassign`,
+  `ft staff get|delete`, `ft webhooks update`, `ft settlements get`,
+  `ft content-posts create` (plus the existing `content-*` reads, which the skill
+  never listed), `ft workspace create`, `ft signup`, and
+  `ft admin workspaces plan-show|delete`. Lists every command that asks for
+  confirmation (`--yes` skips it), when the update notice stays quiet
+  (`--json`/`--raw`/`--csv`, CI, no TTY, `FT_NO_UPDATE_CHECK=1`), and the
+  `409`/`429` errors.
+
 ### Fixed
+- **Partial refunds were documented as `{"amount": …}`,** which the contract
+  never accepted (`SaleRefundRequest` is `additionalProperties: false`, so it was
+  a guaranteed 422). Contract 1.20 refunds per ticket: `{"items":[<sale item
+  id>]}`, with `block_seats` to keep refunded numbered seats off sale.
 - **`recommendations` was documented as a mandatory ticket field and does not
   exist.** The B2B contract has no such field on `TicketTypeCreate`, and
   `additionalProperties: false` means sending one fails with a 422. The

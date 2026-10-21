@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish events; create/cancel/refund sales; check tickets in at the door and resend QRs; list a sale's tickets, a plan's subscribers, cancel subscriptions; run reports (summary, by-event, timeseries, inventory, per-function financials, CFO reconciliation); read settlements paid to the organizer; mint headless service API keys; and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish or cancel events; create/cancel/refund sales (whole or per ticket) and read their payment attempts; check tickets in at the door, resend QRs and reassign tickets to another date; list a sale's tickets, a plan's subscribers, cancel subscriptions; publish content posts; run reports (summary, by-event, timeseries, inventory, per-function financials, CFO reconciliation); read settlements paid to the organizer; mint headless service API keys; sign up and create your own workspace; and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -8,8 +8,8 @@ description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cl
 `ft` is FreeTicket's terminal client. It consumes the **B2B REST API v1** and is
 generated from its OpenAPI 3.1 contract, so every endpoint exists as a command.
 **Reads and writes both work**: every resource has `list`/`get` plus
-`create`/`update`/`delete` and resource actions (`events publish`,
-`sales cancel`/`refund`, `staff set-role`), and every list takes `--csv`. The CLI
+`create`/`update`/`delete` and resource actions (`events publish`/`cancel`,
+`sales cancel`/`refund`/`attempts`, `tickets reassign`, `staff set-role`), and every list takes `--csv`. The CLI
 mirrors what the web app does — anything you can do on the page, you can do here.
 
 ## When to use this skill
@@ -39,11 +39,13 @@ npm install -g @freeticket/cli@latest && ft whoami
 > the CLI is installed globally. Pinning `@latest` matters: a user on an older
 > version (e.g. before the device-flow login) breaks otherwise.
 >
-> This skill documents **`ft` ≥ 0.10.0** (skill revision 2026-10-13, contract
-> B2B 1.7.0 / admin 1.3.0). A
+> This skill documents **`ft` ≥ 0.11.1** (skill revision 2026-10-20, contract
+> B2B 1.20.0 / admin 1.5.1). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
-> *stderr*; when you see it, tell the user to run
-> `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest.
+> *stderr* (checked at most once a day); when you see it, tell the user to run
+> `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest. The
+> notice never appears with `--json`/`--raw`/`--csv`, in CI, or without a TTY;
+> `FT_NO_UPDATE_CHECK=1` turns it off everywhere.
 >
 > **If the skill is the stale one** — `ft --help` lists a command this file does
 > not, or a documented flag is rejected — trust the CLI, not this file, and
@@ -128,31 +130,36 @@ read) and pass `--account <name>`. **Never guess the account on a mutation.**
 
 | Command | What it does | Min role |
 |---|---|---|
+| `ft signup --email <e> --name <n>` | Create an account (`--workspace-name` also creates the first workspace); the user verifies by email, then `ft login` | — |
 | `ft login` | Add an account: browser login (device flow); `--account <name>` names it (default: its email); `--key <key>` for CI | VIEWER |
 | `ft whoami` | User + workspaces of every account in scope | VIEWER |
 | `ft account list\|use\|clear\|remove` | Stored accounts: list · pin one · back to all · remove | — |
 | `ft workspace list\|use\|clear\|show` | Workspaces of every account · pin one (and its account) · back to all · show the pinned one | VIEWER |
+| `ft workspace create --name <n> --slug <s>` | Create your own workspace; the caller becomes its ADMIN (plan quota applies; `409 ALREADY_HAS_ACCESS` if they are staff elsewhere) | — |
 | `ft config` · `ft logout` | Show config (masked sessions) · remove the pinned/only account (`--account <name>`, `--all`) | — |
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
+| `ft events cancel <id>` | Cancel the event and all its dates; **keeps** sales and tickets and refunds nothing (that is `sales refund`). Asks first | ADMIN |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
 | `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
 | `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
-| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data` for partial; `--data '{"acknowledge_open_payment":true}'` on cancel when the payment is still open, `acknowledge_manual` on an out-of-gateway refund) | ADMIN |
-| `ft sales tickets <id>` | List the individual tickets/attendees of a sale | STAFF |
+| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data '{"items":["…"]}'` refunds only those tickets; `block_seats` keeps refunded numbered seats off sale; `--data '{"acknowledge_open_payment":true}'` on cancel when the payment is still open, `acknowledge_manual` on an out-of-gateway refund) | ADMIN |
+| `ft sales tickets\|attempts <id>` | The individual tickets/attendees of a sale · its payment attempt history (declines, approvals, refunds: why it did not go through) | STAFF |
 | `ft tickets access\|checkin\|resend <code>` | Door: read access status · admit (idempotent) · resend QR email | STAFF read / ADMIN resend |
+| `ft tickets reassign <code>` | Move a sold ticket to another date and/or type (`--data '{"eventDateId":"…"}'`, optional `ticketTypeId`, `seatLabel`); charges/refunds no price difference | ADMIN |
 | `ft plans list\|get\|create\|update\|delete` | Membership plans | ADMIN write |
 | `ft plans subscribers <id>` | List a plan's subscribers/members | VIEWER |
 | `ft subscriptions cancel <id>` | Cancel a subscription | ADMIN |
 | `ft discounts list\|create\|update\|delete` | Discount codes / coupons (`--event` `--active`) | ADMIN |
-| `ft webhooks list\|create\|delete` | Webhook endpoints, HMAC-signed delivery | ADMIN |
+| `ft webhooks list\|create\|update\|delete` | Webhook endpoints, HMAC-signed delivery (`update` edits url/events/active and keeps the signing secret) | ADMIN |
 | `ft venues list\|get\|create\|update\|delete` | Venues | ADMIN write |
-| `ft staff list\|create\|set-role` | Workspace staff (`list --workspace-ids <ids>` covers up to 25 workspaces in one call; `set-role --data '{"role":"…"}'`) | ADMIN |
+| `ft staff list\|get\|create\|set-role\|delete` | Workspace staff (`list --workspace-ids <ids>` covers up to 25 workspaces in one call; `set-role --data '{"role":"…"}'`; `delete` revokes access to this workspace only, asks first) | ADMIN |
 | `ft reports summary` | KPIs (`--period 7d\|30d\|90d\|1y`) | VIEWER |
 | `ft reports by-event\|timeseries\|inventory` | Revenue/tickets by event · over time (`--interval`) · capacity/availability | VIEWER |
 | `ft reports financials` | Per-function P&L: gross, platform fee, facial, payment fee, 4x1000, net to settle (`--event`, `--past`) | ADMIN |
-| `ft settlements list` | What FreeTicket pays the organizer: amount, status, event (`--event`, `--status`) | ADMIN |
+| `ft settlements list\|get` | What FreeTicket pays the organizer: amount, status, event (`--event`, `--status`) | ADMIN |
 | `ft settlements document <id>` | Signed download URL for the receipt PDF (5 min TTL); `--proof <fileName>` for a payment proof | ADMIN |
+| `ft content-videos list` · `content-posts list\|create` · `content-lives list\|get\|playback-token` | Organization content; `content-posts create --data` publishes a post (`type` TEXT/IMAGE/ARTICLE; ARTICLE needs `title` + Markdown `body`) | ADMIN |
 | `ft api-keys create\|list\|revoke` | Headless service credentials — plaintext shown once on `create` (`--scope read\|write`) | VIEWER |
 | `ft reports reconciliation` | CFO: cross-check Mercado Pago ↔ sale ↔ Siigo invoice (`--from` `--to`, `--match`, `--provider`) | ADMIN |
 | `ft reports export buyers\|attendees\|subscribers\|reconciliation` | Export to CSV (buyers/attendees take `--event` `--event-date` `--from` `--to` `--status`) | ADMIN |
@@ -160,8 +167,10 @@ read) and pass `--account <name>`. **Never guess the account on a mutation.**
 Common flags on all: `--json` (raw output for `jq`), `--workspace <id>` (only
 that workspace), `--account <name>` (only that stored account). Lists also take `--limit <n>` (1–100, default 20),
 `--cursor <id>`, and **`--csv`** (any list → CSV on stdout). Writes take
-**`--data <json>`** (inline JSON or `@file.json`); `delete` asks for confirmation
-unless `--yes`.
+**`--data <json>`** (inline JSON or `@file.json`). Destructive commands ask for
+confirmation unless `--yes`: every `delete`, `events cancel`, `api-keys revoke`,
+and `ft admin workspaces suspend|plan|delete`, `admin tokens revoke`,
+`admin impersonate`.
 
 **Confirmation and exit codes.** A refused confirmation exits **1**, and without
 a TTY a destructive command fails immediately instead of prompting — so
@@ -199,6 +208,8 @@ ft admin me                                            # confirm identity
 | `ft admin me` | Current superadmin identity |
 | `ft admin workspaces list\|get\|create\|update\|suspend\|restore` | Tenants (`--status`, `--q`); `update --data` takes `webTemplate` / `customDomain`; `suspend` confirms unless `--yes` |
 | `ft admin workspaces plan <id>` | Assisted plan assignment: `--data '{"planSlug":"spark\|star\|icon\|legend"}'`. Cancels a linked Stripe subscription first; aborts with 409 if that fails |
+| `ft admin workspaces plan-show <id>` | Current plan and subscription (`stripeLinked: true` = `plan` will cancel that Stripe subscription) |
+| `ft admin workspaces delete <id>` | Soft delete (keeps sales/buyers/tickets): suspend first; `409` if it has a CONFIRMED sale. Does not cancel Stripe. Asks first |
 | `ft admin users list\|get\|update <id>` | Global users (`--q`, `--role`, `--workspace`) |
 | `ft admin plans list\|get\|create\|update` | Platform plans |
 | `ft admin feature-flags list` · `set <key> --data '{"scope":"…","enabled":true}'` | Feature flags |
@@ -220,7 +231,9 @@ Admin lists also take `--csv`. Writes take `--data <json>`.
   zero-result export keeps its schema.
 - **Errors:** shape `{ error: { code, message, details } }`; exit code `1`.
   `401`=invalid/expired session, `403`=insufficient role, `404`=outside workspace,
-  `422`=validation (the `details[]` say which field).
+  `409`=conflicts with current state (the `code` says which, e.g.
+  `ITEM_ALREADY_CHECKED_IN`), `422`=validation (the `details[]` say which field),
+  `429`=rate limited (wait, then retry).
 - **Writes:** pass the body with `--data` (inline JSON or `@file.json`). On
   validation errors the CLI prints each offending `path: message`.
 - **Money:** integer in the resource currency (`currency`, usually `COP`).
@@ -255,8 +268,18 @@ ft events create --data @event.json --json | jq -r '.id' | xargs ft events publi
 # edit a ticket-type price (partial PATCH)
 ft ticket-types update tt_123 --data '{"price": 50000}'
 
-# partial refund of a sale
-ft sales refund sale_123 --data '{"amount": 20000}'
+# partial refund: only some tickets (item ids = the `id` of `ft sales tickets`)
+ft sales tickets sale_123 --json | jq -r '.[].id'
+ft sales refund sale_123 --data '{"items":["itm_1"]}'
+
+# why didn't this sale go through? (declines, approvals, refunds)
+ft sales attempts sale_123 --json
+
+# postponement: move a sold ticket to the new date (same type name resolved there)
+ft tickets reassign TC-ABC123 --data '{"eventDateId":"date_456"}'
+
+# call off an event: every date goes CANCELLED; sales and tickets stay, no refunds
+ft events cancel evt_123 --yes
 
 # invite staff and assign a role
 ft staff create --data '{"email":"ana@org.com","role":"STAFF"}'
