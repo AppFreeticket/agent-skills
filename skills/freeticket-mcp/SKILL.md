@@ -1,6 +1,6 @@
 ---
 name: freeticket-mcp
-description: Connect to and operate the official FreeTicket MCP server (`@freeticket/mcp`) — the same B2B domain the `ft` CLI exposes, but as MCP tools for any MCP client. Covers the three credential layers (anonymous B2C `public_*`, workspace B2B, superadmin `admin_*`), local stdio setup, remote HTTP connectors on claude.ai via the embedded OAuth 2.1 server, the full tool inventory (103 tools: workspace B2B, members area, content, settlements, superadmin and public catalogue), and the MCP Apps view that renders lists and reports as tables and KPI tiles inside the host. Use it when the user wants to add FreeTicket to Claude Desktop / claude.ai / Cursor, is already calling `freeticket` MCP tools and needs to know which one to pick, is debugging why tools are missing or a connector won't authorize, or is deciding between the MCP server and the `ft` CLI for a task.
+description: Connect to and operate the official FreeTicket MCP server (`@freeticket/mcp`) — the same B2B domain the `ft` CLI exposes, but as MCP tools for any MCP client. Covers the three credential layers (anonymous B2C `public_*`, workspace B2B, superadmin `admin_*`), local stdio setup, remote HTTP connectors on claude.ai via the embedded OAuth 2.1 server, the full tool inventory (117 tools: workspace B2B, members area, content, settlements, superadmin and public catalogue), and the MCP Apps view that renders lists and reports as tables and KPI tiles inside the host. Use it when the user wants to add FreeTicket to Claude Desktop / claude.ai / Cursor, is already calling `freeticket` MCP tools and needs to know which one to pick, is debugging why tools are missing or a connector won't authorize, or is deciding between the MCP server and the `ft` CLI for a task.
 ---
 
 # FreeTicket MCP server (`@freeticket/mcp`)
@@ -10,9 +10,9 @@ the `ft` CLI consumes — one tool per contract operation, generated from the sp
 never hand-written. If the API can do it, there is a tool; if there is no tool,
 the API cannot do it yet.
 
-**103 tools** across three contracts: B2B `/api/v1` (76), superadmin
-`/api/admin` (21), public B2C `/api/public` (6). Contracts at `1.7.0` / `1.3.0` /
-`0.4.0` — the same surface the website operates on: events and sales, the
+**117 tools** across three contracts: B2B `/api/v1` (88), superadmin
+`/api/admin` (23), public B2C `/api/public` (6). Contracts at `1.20.0` / `1.5.1` /
+`0.9.1` (server `0.15.0`) — the same surface the website operates on: events and sales, the
 **members area** (memberships, profile, own tickets), **content** (videos, feed,
 live streams), and **settlement receipts**. Full inventory with signatures:
 [`references/tools.md`](references/tools.md).
@@ -26,6 +26,7 @@ Both hit the same backend. Pick by where the work happens:
 | The user is in a chat client (claude.ai, Claude Desktop, Cursor) | The user is in a terminal, or you are writing a script |
 | You want lists and reports rendered as tables/KPIs in the host | You need CSV, `--json` piped to `jq`, or cron |
 | A buyer-side agent with no credentials at all (`public_*`) | Minting or revoking credentials (deliberately not in MCP) |
+| | Opening an account: `ft signup` has no MCP tool (sign-up, buyer login and headless checkout are excluded on purpose) |
 
 They share one session: `ft login` writes `~/.freeticket/config.json`, and the
 local MCP server reads it. Log in once, both work.
@@ -91,9 +92,9 @@ is not a bug — it is a missing credential.**
 | Layer | Requires | Tools |
 |---|---|---|
 | Public B2C | nothing | `public_*` (6) — always registered |
-| B2B workspace | API key / `ft login` session | events, sales, tickets, plans, venues, staff, reports, settlements, content (76) |
+| B2B workspace | API key / `ft login` session | events, sales, tickets, plans, venues, staff, reports, settlements, content, `workspaces_create` (88, incl. members area) |
 | Members area | enterprise key **+** buyer session (`X-Customer-Session`) | `customer_*` — speak for a buyer, not for the workspace |
-| Superadmin | `FT_ADMIN_SESSION` | `admin_*` (21) — cross-tenant |
+| Superadmin | `FT_ADMIN_SESSION` | `admin_*` (23) — cross-tenant |
 
 If the user asks for something and the tool isn't there, check the layer before
 anything else: no `events_list` means no API key; no `admin_users` means no
@@ -102,7 +103,8 @@ superadmin session.
 ## Working rules
 
 **Reads are free, writes are not.** Destructive tools (`*_delete`,
-`sales_refund`, `sales_cancel`, `admin_workspaces_suspend`, `admin_impersonate`)
+`events_cancel`, `sales_refund`, `sales_cancel`, `customer_order_release`,
+`admin_workspaces_suspend`, `admin_impersonate`)
 carry `destructiveHint` and say so in their description. Confirm with the human
 before calling one, and quote what will be affected — id, name, amount.
 
