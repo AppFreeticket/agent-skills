@@ -200,10 +200,122 @@ ft admin login --session <better-auth.session_token>   # validates vs /api/admin
 | `ft admin tokens list` | — (no pagination) | SUPER_ADMIN |
 | `ft admin tokens create` | `--data` (`{"name","expiresAt?"}`) — plaintext shown once | SUPER_ADMIN |
 | `ft admin tokens revoke <id>` | `--yes` to skip confirm | SUPER_ADMIN |
+| `ft admin crm campaigns` · `batches` · `events` · `options` · `quota` · `preview` · `launch` | Master CRM, see [below](#ft-admin-crm--master-crm-contract-admin-170). Writes send real messages | SUPER_ADMIN |
 
 Without an admin session (`ft admin login` or `FT_ADMIN_SESSION`) the command
 fails fast with a clear message. A missing/expired session returns `401`; a
 non-SUPER_ADMIN session returns `403`. Admin lists also accept `--csv`.
+
+### `ft admin crm` — master CRM (contract admin 1.7.0)
+
+Email and WhatsApp campaigns to buyers **across every workspace**, against
+`/api/admin/crm`. **SUPER_ADMIN only**: it takes `FT_ADMIN_TOKEN` (a platform
+service token from `ft admin tokens create`, sent as `Authorization: Bearer`,
+takes precedence over the session) or `ft admin login --session` /
+`FT_ADMIN_SESSION`.
+
+```bash
+ft admin crm campaigns list [--channel EMAIL|WHATSAPP] [--status S] [--limit N]
+ft admin crm campaigns get <id>
+ft admin crm campaigns cancel <id> [--yes]
+ft admin crm batches next <id> [--ignore-window] [--yes]
+ft admin crm batches stop <id> [--yes]
+ft admin crm events search <query> [--purpose scope|promote|except] [--sender <workspaceId>]
+ft admin crm events dates <eventId...>
+ft admin crm options
+ft admin crm quota
+ft admin crm preview --filter @filter.json [--sender freeticket|<workspaceId>]
+ft admin crm launch --data @campaign.json [--ignore-window] [--yes]
+```
+
+| Command | Own flags | Effect |
+|---|---|---|
+| `campaigns list` · `get <id>` | `--channel` `--status` `--limit` | Read |
+| `campaigns cancel <id>` | `--yes` | **Write** — cancels a scheduled/batched campaign |
+| `batches next <id>` · `stop <id>` | `--ignore-window` (`next` only) `--yes` | **Write** — sends the next batch now · stops the remaining ones |
+| `events search <query>` · `events dates <eventId...>` | `--purpose` `--sender` | Read — ids for a filter (`promote` = published shows only) |
+| `options` | — | Read — cities, genre/format codes, membership plans, WhatsApp templates |
+| `quota` | — | Read — daily WhatsApp quota and batches already committed |
+| `preview` | `--filter @f.json` `--sender` | Read — audience counts per channel, masked sample, who can sign, estimated days at the quota. Sends nothing |
+| `launch` | `--data @c.json` `--ignore-window` `--yes` | **Write** — creates and sends/schedules the campaign |
+
+> **Writes send real messages to real people.** `launch`, `campaigns cancel`,
+> `batches next` and `batches stop` first show what they are about to touch
+> (`launch` runs the audience preview with the same filter and sender) and
+> then **ask for confirmation**. Without a TTY they refuse unless you pass
+> `--yes`. Always run `preview` and show the human the totals before a
+> `launch`. The CLI never retries a write: if a `launch` times out, check
+> `campaigns list` first — the backend rejects the same channel + sender +
+> subject within 10 minutes with `DUPLICATE_CAMPAIGN` and prints the existing id.
+
+**Send window.** WhatsApp only goes out **9:00-20:00 Bogotá**. Scheduled and
+batched times are moved into the window (the response's `scheduledAt` is the
+real one); an immediate send outside it fails with `OUTSIDE_SEND_WINDOW`, which
+prints when the window opens. `--ignore-window` (or `ignoreSendWindow` in the
+body) overrides it only on `batches next` and on a WhatsApp `launch` with
+`timing.mode` `now` — use it only when the human explicitly asks.
+
+Other named errors: `QUOTA_EXHAUSTED` (prints when the quota frees up),
+`INVALID_STATE` (the campaign no longer allows that action), `422` (lists each
+`details[].path`), `413 PAYLOAD_TOO_LARGE` (body over 256 KB).
+
+`filter.json` (audience filter v2):
+
+```json
+{
+  "version": 2,
+  "scope": { "level": "platform" },
+  "include": [
+    { "type": "purchased", "eventIds": ["evt_123"], "window": { "kind": "last_days", "days": 90 } }
+  ],
+  "except": [
+    { "type": "received_campaign", "days": 7, "channel": "any" }
+  ]
+}
+```
+
+- `scope` (default `platform`): `{ "level": "orgs", "workspaceIds": [...] }` or
+  `{ "level": "events", "eventIds": [...] }`.
+- `include` combines with AND, `except` with OR (evaluated platform-wide). Up to
+  12 conditions per block, 50 ids per list.
+- Condition types: `purchased`, `abandoned`, `checked_in` (optional `eventIds`,
+  `dateIds` + `dateEventIds`, `window`), `city` (`cities`), `facet`
+  (`dimension`: `genre` | `format`, `codes`), `membership` (`state`: `active` |
+  `expiring` | `cancelled`, `withinDays`, `planIds`), `spend` (`minCop`,
+  `maxCop`), `received_campaign` (`except` only), `people` (`include` only:
+  `emails`).
+- `window`: `{ "kind": "any" }` (default), `{ "kind": "last_days", "days": 7|30|90 }`
+  or `{ "kind": "range", "from": "2026-09-01", "to": "2026-09-30" }` (Bogotá dates).
+- Without a state condition (`purchased`, `abandoned`, `checked_in`,
+  `membership`, `people`) in `include`, the audience defaults to confirmed
+  buyers plus active members.
+
+`campaign.json`:
+
+```json
+{
+  "channel": "WHATSAPP",
+  "sender": { "kind": "freeticket" },
+  "templateName": "promo_show",
+  "subject": "New date in Medellín",
+  "body": "We just opened a second show. Get your tickets before they are gone.",
+  "promotedEventId": "evt_123",
+  "filter": { "version": 2, "include": [{ "type": "purchased", "eventIds": ["evt_123"] }], "except": [] },
+  "timing": { "mode": "batches", "firstAt": "2026-11-03T10:00:00-05:00", "batchSize": 50, "perDay": 3, "intervalMinutes": 120 }
+}
+```
+
+- `sender`: `{ "kind": "freeticket" }` or `{ "kind": "organization", "workspaceId": "..." }`.
+  FreeTicket is mandatory when the scope spans the platform, several
+  organizations or events of more than one owner (`preview` tells you).
+- WhatsApp needs an approved `templateName` (see `options`); email rejects one.
+  A WhatsApp `imageUrl` must come from the media library.
+- `timing`: `{ "mode": "now" }`, `{ "mode": "scheduled", "at": "<ISO with offset>" }`
+  or `batches` (WhatsApp only; daily cap 150 when FreeTicket signs, 200 for an
+  organization).
+
+The MCP server exposes only the CRM **reads** (`admin_crm_*`); launching,
+batches and cancelling are CLI-only (or the admin panel).
 
 ## Global flags
 
