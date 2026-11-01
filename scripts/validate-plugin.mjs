@@ -12,7 +12,7 @@
  * Usage: node scripts/validate-plugin.mjs
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, relative, isAbsolute } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const errors = [];
@@ -129,6 +129,44 @@ if (cc) {
       warn(`server "${name}": type "${server.type}" (Claude Code) / "${mine.type}" (spec) - check this pairing is deliberate`);
   }
 }
+
+// OpenAI compatibility overlay and portable presentation metadata.
+// The portable extension wins as a whole; never rely on merging the overlay.
+const codex = read(".codex-plugin/plugin.json");
+for (const field of ["name", "version", "description"])
+  if (codex[field] !== plugin[field]) fail(`.codex-plugin: ${field} differs from plugin.json`);
+if (codex.skills !== "./skills/") fail(".codex-plugin: skills must be ./skills/");
+if (codex.mcpServers !== "./mcp.json") fail(".codex-plugin: mcpServers must be ./mcp.json");
+const presentation = plugin.extensions?.["com.openai"]?.interface;
+if (!presentation || JSON.stringify(presentation) !== JSON.stringify(codex.interface))
+  fail("OpenAI interface differs between portable manifest and compatibility overlay");
+const ui = codex.interface ?? {};
+for (const field of ["displayName", "shortDescription", "longDescription", "developerName", "category"])
+  if (typeof ui[field] !== "string" || !ui[field].trim()) fail(`interface.${field} is required`);
+for (const field of ["websiteURL", "privacyPolicyURL", "termsOfServiceURL"])
+  if (!/^https:\/\//.test(ui[field] ?? "")) fail(`interface.${field} must be HTTPS`);
+if (!Array.isArray(ui.capabilities) || !ui.capabilities.length)
+  fail("interface.capabilities must be a nonempty array");
+if (!Array.isArray(ui.defaultPrompt) || ui.defaultPrompt.length < 1 || ui.defaultPrompt.length > 3 ||
+    ui.defaultPrompt.some((p) => typeof p !== "string" || !p.trim() || p.length > 128))
+  fail("interface.defaultPrompt must contain 1–3 nonempty prompts of at most 128 characters");
+if (!Array.isArray(ui.screenshots)) fail("interface.screenshots must be an array");
+for (const path of [ui.composerIcon, ui.logo, ...(ui.screenshots ?? [])].filter(Boolean)) {
+  const rel = relative(resolve(ROOT), resolve(ROOT, path));
+  if (!path.startsWith("./") || rel.startsWith("..") || isAbsolute(rel)) {
+    fail(`interface asset path escapes the plugin: ${path}`);
+    continue;
+  }
+  try { if (!statSync(join(ROOT, path)).isFile()) throw new Error(); }
+  catch { fail(`interface asset does not exist: ${path}`); }
+}
+for (const path of ui.screenshots ?? [])
+  if (!/^\.\/assets\/.+\.png$/.test(path)) fail(`screenshot must be a PNG under ./assets/: ${path}`);
+if (JSON.stringify(codex).includes("[TODO:")) fail(".codex-plugin contains scaffold placeholders");
+if (!ui.logo || !ui.composerIcon || !ui.screenshots?.length)
+  warn("OpenAI listing assets are incomplete; add approved logo/icon and real workflow screenshots before submission");
+if (mcp.mcpServers?.freeticket?.url !== "https://mcp.appfreeticket.com/mcp")
+  fail("FreeTicket MCP must use the public production endpoint");
 
 for (const w of warnings) console.warn(`warn  ${w}`);
 for (const e of errors) console.error(`error ${e}`);
