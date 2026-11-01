@@ -41,8 +41,11 @@ npm install -g @freeticket/cli@latest && ft whoami
 >
 > This skill documents **`ft` ≥ 0.11.1** (skill revision 2026-10-20, contract
 > B2B 1.20.0 / admin 1.5.1). The lineup commands (`ft artists search`,
-> `ft events artists …`, `ft events invitations …`) need the next minor of `ft`
-> and contract B2B 1.25.0 (free-admin#1155). A
+> `ft events artists …`, `ft events invitations …`) and the dashboard-parity
+> commands (`ft events schedule …`, `ft presale-windows …`, `ft sales transfer`,
+> `ft sales recipient set`, `ft tickets checkin-undo`,
+> `ft event-dates courtesy-seats`) need the next minor of `ft` and contract
+> B2B 1.25.0 (free-admin#1155, #1156, #1157). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
 > *stderr* (checked at most once a day); when you see it, tell the user to run
 > `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest. The
@@ -142,15 +145,22 @@ read) and pass `--account <name>`. **Never guess the account on a mutation.**
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
 | `ft events cancel <id>` | Cancel the event and all its dates; **keeps** sales and tickets and refunds nothing (that is `sales refund`). Asks first | ADMIN |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
+| `ft events schedule set <eventId> --publish-at <iso>` \| `--sale-starts-at <iso>` | Schedule a DRAFT — exactly one flag: `--publish-at` publishes it later; `--sale-starts-at` publishes **now** and opens sales later on every upcoming ticket type | ADMIN |
+| `ft events schedule clear <eventId>` | Cancel a pending `--publish-at` (does not undo `--sale-starts-at`: edit the ticket types) | ADMIN |
+| `ft event-dates courtesy-seats <dateId>` | Blocked seats of a numbered (seats.io) date that can be issued as courtesies | ADMIN |
 | `ft artists search <q>` | Registered artists by name (all of FreeTicket, public data only) → the ids a lineup takes (`--limit` `--cursor`) | VIEWER |
 | `ft events artists set <eventId> --artist <id>... [--invite <email>...]` | **Replaces** the whole lineup, in the given order (unlisted artists are unlinked; no `--artist` clears it). `--invite` invites artists without an account (additive). Asks before removing anyone; prints `ARTIST_IDS_IGNORED` for ids that are not a registered artist | ADMIN |
 | `ft events artists remove <eventId> <organizationId>` | Unlink one artist, leaving the rest. Asks first | ADMIN |
 | `ft events invitations list <eventId>` · `resend <eventId> <invitationId>` · `cancel <eventId> <invitationId>` | Invitations to artists without an account: list (PENDING/EXPIRED) · resend (renews 14 days, sends an email each time) · cancel (asks first) | ADMIN |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
+| `ft presale-windows list\|create <ticketTypeId>` · `update\|delete <id>` | Membership presale windows (alias `presales`): `create --plan --starts-at --ends-at [--capacity --active]`; one window per plan and ticket type; `--capacity none` removes the cap; `delete` asks first | VIEWER read / ADMIN write |
 | `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
 | `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
 | `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data '{"items":["…"]}'` refunds only those tickets; `block_seats` keeps refunded numbered seats off sale; `--data '{"acknowledge_open_payment":true}'` on cancel when the payment is still open, `acknowledge_manual` on an out-of-gateway refund) | ADMIN |
 | `ft sales tickets\|attempts <id>` | The individual tickets/attendees of a sale · its payment attempt history (declines, approvals, refunds: why it did not go through) | STAFF |
+| `ft sales transfer <saleId> <itemId> --email <e>` | Transfer one ticket to a **registered** buyer: voids the old QR, once per ticket, until the show starts. Asks first | ADMIN |
+| `ft sales recipient set <saleId> --name <n> --email <e>` | Correct a dashboard courtesy's recipient and resend; a new email voids the QRs already sent. Asks first | ADMIN |
+| `ft tickets checkin-undo <code>` | Undo a wrong door scan so the ticket is valid again (idempotent). Asks first | ADMIN |
 | `ft tickets access\|checkin\|resend <code>` | Door: read access status · admit (idempotent) · resend QR email | STAFF read / ADMIN resend |
 | `ft tickets reassign <code>` | Move a sold ticket to another date and/or type (`--data '{"eventDateId":"…"}'`, optional `ticketTypeId`, `seatLabel`); charges/refunds no price difference | ADMIN |
 | `ft plans list\|get\|create\|update\|delete` | Membership plans | ADMIN write |
@@ -175,9 +185,23 @@ that workspace), `--account <name>` (only that stored account). Lists also take 
 `--cursor <id>`, and **`--csv`** (any list → CSV on stdout). Writes take
 **`--data <json>`** (inline JSON or `@file.json`). Destructive commands ask for
 confirmation unless `--yes`: every `delete`, `events cancel`, `events artists remove`,
-`events invitations cancel`, `events artists set` when it would remove someone, `api-keys revoke`,
+`events invitations cancel`, `events artists set` when it would remove someone,
+`sales transfer`, `sales recipient set`, `tickets checkin-undo`, `api-keys revoke`,
 and `ft admin workspaces suspend|plan|delete`, `admin tokens revoke`,
 `admin impersonate`.
+
+**New 1.25.0 fields go through `--data`.** `events update` accepts `slug`,
+`squareImageUrl`, `storyImageUrl`, `pulepCode`, `listedOnPortal`, `genre`,
+`subgenre`, `genreOther` and `audience`; `event-dates create|update` accept
+`maxPerCustomer` (tickets one buyer can hold for that date; `null` = no cap).
+
+**Errors on the 1.25.0 operations.** `409 EVENT_NOT_DRAFT` (schedule) or
+`409 CHECKIN_CHANGED` / `CONFLICT` (check-in undo, transfer): something changed
+in flight — re-read the event/ticket and retry once. `422
+RECIPIENT_NOT_REGISTERED` / `SELF_TRANSFER`: the email has no verified buyer
+account (or is the holder's own) — ask the user for a different email, never
+retry as is. `409 ALREADY_TRANSFERRED` after a transfer that looked failed means
+it actually went through: do not repeat it.
 
 **Confirmation and exit codes.** A refused confirmation exits **1**, and without
 a TTY a destructive command fails immediately instead of prompting — so

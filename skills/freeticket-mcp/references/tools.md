@@ -1,9 +1,10 @@
 # Tool inventory — `@freeticket/mcp` v0.15.0
 
-124 tools, one per contract operation (B2B 95 · superadmin 23 · public 6).
-Contracts: B2B `1.25.0` · superadmin `1.5.1` · public `0.9.1`. The lineup tools
-and `waitlist_list` (B2B 1.21–1.25) ship in the next `@freeticket/mcp` release,
-once free-admin#1155 is deployed. `?` marks an optional argument.
+134 tools, one per contract operation (B2B 105 · superadmin 23 · public 6).
+Contracts: B2B `1.25.0` · superadmin `1.5.1` · public `0.9.1`. The lineup tools,
+the dashboard-parity tools (schedule, presale windows, transfer, check-in undo,
+courtesy recipient/seats) and `waitlist_list` (B2B 1.21–1.25) ship in the next
+`@freeticket/mcp` release, once free-admin#1155, #1156 and #1157 are deployed. `?` marks an optional argument.
 **▣** = renders through the MCP Apps view (table or KPI tiles in the host).
 **⚠** = `destructiveHint`: confirm with the human and quote what will be
 affected before calling.
@@ -45,13 +46,16 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | ▣ `events_list` | `q? status? withTotal? limit? cursor? workspace?` | `status` filters in the query, so `limit` counts returned rows. `withTotal` adds `page.total` (opt-in: extra count query) |
 | `events_get` | `id` | |
 | `events_create` | `name slug description? venueId? dates` | `dates`: at least one `{startsAt, endsAt?, timezone}` |
-| `events_update` | `id name? description? venueId? coverImageUrl?` | |
+| `events_update` | `id name? description? venueId? coverImageUrl? slug? squareImageUrl? storyImageUrl? pulepCode? listedOnPortal? genre? subgenre? genreOther? audience?` | `pulepCode` is required for performing arts with capacity over 400 (Colombia). `genreOther` only with `genre: "otro"` |
+| `events_schedule` | `id publishAt? saleStartsAt?` | DRAFT only, **exactly one**: `publishAt` publishes it later (checked every ~5 min); `saleStartsAt` publishes **now** and opens sales later on every upcoming ticket type. 409 `EVENT_NOT_DRAFT` → re-read the event |
+| `events_unschedule` | `id` | Clears a pending `publishAt`. Does not undo `saleStartsAt` (edit the ticket types) |
 | `events_publish` | `id` | Makes it visible in the public catalogue |
 | ⚠ `events_cancel` | `id` | Cancels the event and all its dates; keeps sales and tickets, refunds nothing (that is `sales_refund`). Idempotent |
 | ⚠ `events_delete` | `id` | |
 | ▣ `event_dates_list` | `eventId` | |
-| `event_dates_create` | `eventId startsAt timezone? label? endsAt? doorsOpenAt? venueId?` | `timezone` defaults to `America/Bogota` |
-| `event_dates_update` | `eventId dateId startsAt? endsAt? doorsOpenAt? timezone? label? venueId?` | |
+| `event_dates_create` | `eventId startsAt timezone? label? endsAt? doorsOpenAt? venueId? maxPerCustomer?` | `timezone` defaults to `America/Bogota`. `maxPerCustomer`: tickets one buyer can hold for that date (`null` = no cap) |
+| `event_dates_update` | `eventId dateId startsAt? endsAt? doorsOpenAt? timezone? label? venueId? maxPerCustomer?` | |
+| `event_dates_courtesy_seats` | `eventDateId` | Read-only. Blocked seats of a numbered date that can be issued as courtesies, by ticket type. 503 `SEATSIO_UNAVAILABLE` is retryable |
 | ⚠ `event_dates_delete` | `eventId dateId` | |
 
 #### Lineup and artist invitations
@@ -76,8 +80,13 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | ⚠ `ticket_types_delete` | `id` | |
 | `tickets_access` | `code` | Read-only door check — does **not** admit |
 | `tickets_checkin` | `code` | Admits at the door, idempotent |
+| ⚠ `tickets_checkin_undo` | `code` | Undoes a wrong scan so the ticket is valid again. ADMIN. Idempotent (`undone: false` if it was not checked in). 409 `CHECKIN_CHANGED` → re-read with `tickets_access` and retry |
 | `tickets_resend` | `code` | Re-issues the QR by email |
 | `tickets_reassign` | `code eventDateId? ticketTypeId? seatLabel?` | Moves a sold ticket to another date and/or type (postponements), at least one of the two ids. No refund, no resale |
+| ▣ `presale_windows_list` | `ticketTypeId` | Read-only. Membership presale windows of a ticket type |
+| `presale_windows_create` | `ticketTypeId planId presaleStartsAt presaleEndsAt presaleCapacity? isActive?` | Only plans of the workspace that owns the event (422 `PLAN_NOT_ELIGIBLE`); one window per plan (409 `DUPLICATE_PLAN` → update it instead) |
+| `presale_windows_update` | `id planId? presaleStartsAt? presaleEndsAt? presaleCapacity? isActive?` | Absent fields untouched. 422 `PRESALE_WINDOW_INVERTED` if end ≤ start |
+| ⚠ `presale_windows_delete` | `id` | Members lose that presale access immediately |
 
 ### Sales
 
@@ -90,6 +99,8 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `sales_create` | `buyer items channel comp notes?` | Comps and programmatic orders — **not idempotent, see below** |
 | ⚠ `sales_cancel` | `id acknowledge_open_payment?` | The flag is required when the payment is still open at the gateway |
 | ⚠ `sales_refund` | `id acknowledge_manual?` | The flag confirms the money goes back by hand, outside the gateway |
+| ⚠ `sales_transfer` | `saleId itemId email` | Moves one ticket to a **registered** buyer and voids the old QR. Once per ticket, until the show starts. **Not idempotent**: 409 `ALREADY_TRANSFERRED` on a retry means it went through. 422 `RECIPIENT_NOT_REGISTERED` / `SELF_TRANSFER` → ask for another email. 409 `CONFLICT` → re-read and retry |
+| ⚠ `sales_recipient_update` | `saleId name email` | Dashboard courtesies only (other sales → 404). Resends the tickets; a new email voids the QRs already sent (`ticketCodesRotated: true`) |
 
 ### Memberships
 
