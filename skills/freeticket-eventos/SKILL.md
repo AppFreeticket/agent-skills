@@ -45,12 +45,21 @@ Before recommending anything, respect how FreeTicket actually works:
    because `TicketTypeCreate` is `additionalProperties: false`.
 4. **Member-gated presales:** presales are **members-only**. The portal shows a
    countdown + membership CTA. A workspace with no membership plans **cannot**
-   enable presales — create a plan first.
+   enable presales — create a plan first. A presale is a **window per plan and
+   ticket type** (`ft presale-windows create <ticketTypeId> --plan … --starts-at
+   … --ends-at …`, MCP `presale_windows_create`): only active plans of the
+   workspace that owns the event (422 `PLAN_NOT_ELIGIBLE`), one window per plan
+   (409 `DUPLICATE_PLAN` → update the existing one), end after start.
 5. **Platform fee:** FreeTicket charges a **10%** service fee on every sale (always,
    FreeTicket revenue). "Absorbing" the fee only changes who pays it, not whether it
    exists. Reason about prices in net terms.
 6. **Time zone:** each date has its IANA `timezone`. The public sees local wall-clock
    time, not raw UTC. Don't promise a time without fixing the zone.
+7. **PULEP (Colombia):** performing-arts events with **capacity over 400** need
+   a PULEP code (`pulepCode` in `events update --data`). Ask for it before
+   publishing a show of that size.
+8. **Per-buyer cap:** `maxPerCustomer` on a date limits how many tickets one
+   buyer can hold for it (`null` = no cap). Suggest it for high-demand drops.
 
 ## Recommended flow
 
@@ -62,6 +71,27 @@ Before recommending anything, respect how FreeTicket actually works:
 3. Define ticket types with coherent net pricing (remember the 10%).
 4. Set the lineup (see below) if the event has artists.
 5. Publish checklist: event + date `PUBLISHED` and future, fields complete.
+6. To publish later instead of now, schedule the DRAFT with **exactly one** of:
+   `ft events schedule set <eventId> --publish-at <iso>` (goes public at that
+   instant) or `--sale-starts-at <iso>` (public **now**, sales open at that
+   instant — the "coming soon" countdown). MCP: `events_schedule`. Undo a
+   pending `publishAt` with `ft events schedule clear` / `events_unschedule`.
+   409 `EVENT_NOT_DRAFT`: re-read the event (it was published meanwhile).
+
+**Ticket fixes after the sale (ADMIN key with `write` scope; every one asks for
+confirmation, `--yes` in scripts):**
+- Transfer a ticket to someone else: `ft sales transfer <saleId> <itemId>
+  --email <e>` (MCP `sales_transfer`). The recipient needs a verified buyer
+  account; on 422 `RECIPIENT_NOT_REGISTERED` ask the user for the right email
+  (or to have the person sign up). Once per ticket, voids the old QR, not
+  retryable: 409 `ALREADY_TRANSFERRED` means it already went through.
+- Wrong door scan: `ft tickets checkin-undo <code>` (MCP
+  `tickets_checkin_undo`). On 409 `CHECKIN_CHANGED`, re-read the ticket and
+  retry once.
+- Courtesy sent to the wrong person: `ft sales recipient set <saleId> --name …
+  --email …` (MCP `sales_recipient_update`); a new email voids the QRs already
+  sent. For numbered events, `ft event-dates courtesy-seats <dateId>` lists the
+  blocked seats available for courtesies.
 
 **To set the lineup (who performs):**
 1. Resolve every artist name to an id: `ft artists search "<name>" --json`

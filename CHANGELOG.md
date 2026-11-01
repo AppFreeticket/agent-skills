@@ -17,6 +17,17 @@ file is for.
   `events_artist_invitations_list|resend|cancel` and `waitlist_list` (124 tools);
   `freeticket-eventos` documents the search → set → invitations flow, including
   that `set` replaces the whole lineup.
+- Dashboard-parity operations (contract B2B 1.25.0, free-admin#1156 and #1157 —
+  not deployed yet): `freeticket-cli` lists `ft events schedule set|clear`,
+  `ft presale-windows list|create|update|delete`, `ft sales transfer`,
+  `ft sales recipient set`, `ft tickets checkin-undo` and
+  `ft event-dates courtesy-seats`, the new `--data` fields (`slug`, PULEP,
+  portal visibility, images, genre, `maxPerCustomer`) and what to do on each
+  409/422; `freeticket-mcp/references/tools.md` adds the 10 matching tools
+  (134 tools); `freeticket-eventos` documents scheduling (exactly one of
+  `publishAt`/`saleStartsAt`), presale windows (one per plan, org plans only),
+  the PULEP rule (performing arts over 400 capacity), `maxPerCustomer`, and
+  transfer / check-in undo / courtesy recipient.
 
 ## [0.3.0] - 2026-10-20
 
