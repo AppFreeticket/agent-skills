@@ -9,6 +9,12 @@ file is for.
 
 ## [Unreleased]
 
+### Added
+- Codex compatibility manifest and portable OpenAI listing metadata for the
+  remote-MCP plugin, aligned with version 0.3.0 and the existing Claude manifest.
+- Validation of OpenAI presentation, starter prompts, component paths and
+  cross-manifest identity. Missing listing assets are reported before submission.
+
 ## [0.3.0] - 2026-10-20
 
 ### Changed
