@@ -40,7 +40,9 @@ npm install -g @freeticket/cli@latest && ft whoami
 > version (e.g. before the device-flow login) breaks otherwise.
 >
 > This skill documents **`ft` ≥ 0.11.1** (skill revision 2026-10-20, contract
-> B2B 1.20.0 / admin 1.5.1). A
+> B2B 1.20.0 / admin 1.5.1). The lineup commands (`ft artists search`,
+> `ft events artists …`, `ft events invitations …`) need the next minor of `ft`
+> and contract B2B 1.25.0 (free-admin#1155). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
 > *stderr* (checked at most once a day); when you see it, tell the user to run
 > `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest. The
@@ -140,6 +142,10 @@ read) and pass `--account <name>`. **Never guess the account on a mutation.**
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
 | `ft events cancel <id>` | Cancel the event and all its dates; **keeps** sales and tickets and refunds nothing (that is `sales refund`). Asks first | ADMIN |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
+| `ft artists search <q>` | Registered artists by name (all of FreeTicket, public data only) → the ids a lineup takes (`--limit` `--cursor`) | VIEWER |
+| `ft events artists set <eventId> --artist <id>... [--invite <email>...]` | **Replaces** the whole lineup, in the given order (unlisted artists are unlinked; no `--artist` clears it). `--invite` invites artists without an account (additive). Asks before removing anyone; prints `ARTIST_IDS_IGNORED` for ids that are not a registered artist | ADMIN |
+| `ft events artists remove <eventId> <organizationId>` | Unlink one artist, leaving the rest. Asks first | ADMIN |
+| `ft events invitations list <eventId>` · `resend <eventId> <invitationId>` · `cancel <eventId> <invitationId>` | Invitations to artists without an account: list (PENDING/EXPIRED) · resend (renews 14 days, sends an email each time) · cancel (asks first) | ADMIN |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
 | `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
 | `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
@@ -168,7 +174,8 @@ Common flags on all: `--json` (raw output for `jq`), `--workspace <id>` (only
 that workspace), `--account <name>` (only that stored account). Lists also take `--limit <n>` (1–100, default 20),
 `--cursor <id>`, and **`--csv`** (any list → CSV on stdout). Writes take
 **`--data <json>`** (inline JSON or `@file.json`). Destructive commands ask for
-confirmation unless `--yes`: every `delete`, `events cancel`, `api-keys revoke`,
+confirmation unless `--yes`: every `delete`, `events cancel`, `events artists remove`,
+`events invitations cancel`, `events artists set` when it would remove someone, `api-keys revoke`,
 and `ft admin workspaces suspend|plan|delete`, `admin tokens revoke`,
 `admin impersonate`.
 

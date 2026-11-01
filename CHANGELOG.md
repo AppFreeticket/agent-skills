@@ -9,6 +9,15 @@ file is for.
 
 ## [Unreleased]
 
+### Added
+- Event lineup, end to end (contract B2B 1.25.0, free-admin#1155 — not deployed
+  yet): `freeticket-cli` lists `ft artists search`, `ft events artists set|remove`
+  and `ft events invitations list|resend|cancel`; `freeticket-mcp/references/tools.md`
+  lists `artists_search`, `events_artists_set|remove`,
+  `events_artist_invitations_list|resend|cancel` and `waitlist_list` (124 tools);
+  `freeticket-eventos` documents the search → set → invitations flow, including
+  that `set` replaces the whole lineup.
+
 ## [0.3.0] - 2026-10-20
 
 ### Changed

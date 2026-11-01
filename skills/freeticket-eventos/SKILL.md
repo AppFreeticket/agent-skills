@@ -60,7 +60,26 @@ Before recommending anything, respect how FreeTicket actually works:
    what-to-know copy goes at the end of the ticket description, not in a field of
    its own.
 3. Define ticket types with coherent net pricing (remember the 10%).
-4. Publish checklist: event + date `PUBLISHED` and future, fields complete.
+4. Set the lineup (see below) if the event has artists.
+5. Publish checklist: event + date `PUBLISHED` and future, fields complete.
+
+**To set the lineup (who performs):**
+1. Resolve every artist name to an id: `ft artists search "<name>" --json`
+   (MCP: `artists_search`). It searches all registered artists on FreeTicket,
+   not just the user's workspaces. Confirm ambiguous matches with the user.
+2. Send the **full lineup in display order** in one call:
+   `ft events artists set <eventId> --artist <id1> <id2> …` (MCP:
+   `events_artists_set` with `artistIds`). It replaces, it doesn't append:
+   anyone left out is unlinked, so read the current `artists` of the event
+   first and confirm with the user before removing anyone. To drop just one
+   artist use `ft events artists remove` / `events_artists_remove`.
+3. Artists with no FreeTicket account: add their emails with `--invite`
+   (MCP: `inviteEmails`). They get an invitation and are linked when they sign
+   up. If the response carries `ARTIST_IDS_IGNORED`, tell the user which ids
+   were skipped instead of retrying.
+4. Follow up invitations with `ft events invitations list <eventId>`
+   (MCP: `events_artist_invitations_list`); `resend` sends a new email each
+   time (don't loop it), `cancel` revokes a link sent by mistake.
 
 **To audit an event or the account (with data):**
 1. Pull data with `ft` (see `references/audit.md`):

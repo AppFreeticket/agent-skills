@@ -1,7 +1,9 @@
 # Tool inventory — `@freeticket/mcp` v0.15.0
 
-117 tools, one per contract operation (B2B 88 · superadmin 23 · public 6).
-Contracts: B2B `1.20.0` · superadmin `1.5.1` · public `0.9.1`. `?` marks an optional argument.
+124 tools, one per contract operation (B2B 95 · superadmin 23 · public 6).
+Contracts: B2B `1.25.0` · superadmin `1.5.1` · public `0.9.1`. The lineup tools
+and `waitlist_list` (B2B 1.21–1.25) ship in the next `@freeticket/mcp` release,
+once free-admin#1155 is deployed. `?` marks an optional argument.
 **▣** = renders through the MCP Apps view (table or KPI tiles in the host).
 **⚠** = `destructiveHint`: confirm with the human and quote what will be
 affected before calling.
@@ -52,6 +54,17 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `event_dates_update` | `eventId dateId startsAt? endsAt? doorsOpenAt? timezone? label? venueId?` | |
 | ⚠ `event_dates_delete` | `eventId dateId` | |
 
+#### Lineup and artist invitations
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| `artists_search` | `q limit? cursor?` | Read-only. Registered artists across FreeTicket (id, name, slug, logoUrl). `q` 2–100 chars. Use it to resolve names to ids before `events_artists_set` |
+| ⚠ `events_artists_set` | `eventId artistIds inviteEmails?` | **Replaces** the whole lineup in order (send the full list; `[]` clears it). Idempotent. `inviteEmails` invites artists without an account (additive). Bad ids → `warnings[]` `ARTIST_IDS_IGNORED`. Max 50 ids / 20 emails, 20 changes/h. Confirm if it removes anyone |
+| ⚠ `events_artists_remove` | `eventId organizationId` | Unlinks one artist, keeps the rest. Owner or the artist itself. Idempotent |
+| ▣ `events_artist_invitations_list` | `eventId` | Read-only. PENDING/EXPIRED invitations, newest first |
+| `events_artist_invitations_resend` | `eventId invitationId` | Renews 14 days, same link. **Sends an email on every call** (not idempotent; 3/h). 409 `INVITATION_ACCEPTED` if already joined |
+| ⚠ `events_artist_invitations_cancel` | `eventId invitationId` | Deletes the invitation. Idempotent. 409 `INVITATION_ACCEPTED` → use `events_artists_remove` |
+
 ### Ticket types and tickets
 
 | Tool | Arguments | Notes |
@@ -100,6 +113,7 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `discounts_create` | `code type value eventId? maxUses? startsAt? endsAt?` | |
 | `discounts_update` | `id active? value? maxUses? startsAt? endsAt?` | |
 | ⚠ `discounts_delete` | `id` | |
+| ▣ `waitlist_list` | `city? limit? cursor?` | Read-only, ADMIN (personal data). The enterprise landing's per-city waitlist |
 | ▣ `webhooks_list` | `limit? cursor? workspace?` | |
 | `webhooks_create` | `url events secret?` | HMAC-signed delivery |
 | `webhooks_update` | `id url? events? active?` | Keeps the signing secret (delete + create would rotate it). `events`: `sale.confirmed\|sale.refunded` |
