@@ -4,9 +4,9 @@
   "description": "Operate FreeTicket from any agent: skills for the ft CLI, event copy, and the MCP server that exposes the B2B, superadmin and public contracts as tools.",
   "author": {
     "name": "FreeTicket",
-    "url": "https://freeticket.co"
+    "url": "https://appfreeticket.com"
   },
-  "homepage": "https://freeticket.co",
+  "homepage": "https://appfreeticket.com",
   "repository": "https://github.com/AppFreeticket/agent-skills",
   "license": "MIT",
   "keywords": [
@@ -29,9 +29,9 @@
       "Read",
       "Write"
     ],
-    "websiteURL": "https://freeticket.co",
-    "privacyPolicyURL": "https://freeticket.co/legal/privacidad",
-    "termsOfServiceURL": "https://freeticket.co/legal/terminos-y-condiciones",
+    "websiteURL": "https://appfreeticket.com",
+    "privacyPolicyURL": "https://appfreeticket.com/legal/privacidad",
+    "termsOfServiceURL": "https://appfreeticket.com/legal/terminos-y-condiciones",
     "defaultPrompt": [
       "Find public events and available tickets.",
       "Create a draft event with one date and ticket types.",

@@ -6,7 +6,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/AppFreeticket/agent-skills)](https://github.com/AppFreeticket/agent-skills/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/AppFreeticket/agent-skills)](https://github.com/AppFreeticket/agent-skills/commits/main)
 
-**Skills that let your AI agent operate and grow [FreeTicket](https://freeticket.co) — the LATAM (Colombia-first) ticketing platform.**
+**Skills that let your AI agent operate and grow [FreeTicket](https://appfreeticket.com) — the LATAM (Colombia-first) ticketing platform.**
 
 Drive the `ft` CLI, read and mutate real account data, and write/audit events in
 FreeTicket's brand voice. Installable with [`npx skills`](https://skills.sh) for
