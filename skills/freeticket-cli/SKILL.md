@@ -63,6 +63,15 @@ and a URL, opens your browser, and once you approve it stores the session in
 backend-issued API key required. The `--key ft_live_…` flag stays for headless
 CI where a browser isn't available.
 
+**Read-only.** When the user only wants you to look (reports, lists, audits),
+or asks that the CLI not change anything, log in with
+`npx @freeticket/cli@latest login --read-only`. The key then answers `403` to
+every create/update/delete/refund/check-in, and `ft whoami` shows
+`scope: read`. If the command fails with "That key can write", the user
+unticked "Solo lectura" in the browser: tell them, do not retry without the
+flag. This is a guard for the user, not a sandbox for you: never drop
+`--read-only` to get past a `403`, ask the user instead.
+
 ### Authentication policy (agents: follow exactly)
 
 When a command fails with `Not logged in` (or `Your session is invalid…`), the

@@ -9,9 +9,14 @@ file is for.
 
 ## [Unreleased]
 
+### Added
+- **`freeticket-cli`**: `ft login --read-only` (CLI with API 1.43.0, where `GET /me`
+  returns `scope`). The skill tells the agent to use it when the user only wants
+  reads, and never to drop the flag to get past a `403`. `ft whoami` documents `scope`.
+
 ### Changed
 - **`freeticket-cli`**: `ft staff delete` documents the target-role ceiling of
-  API 1.43.0 — `403 TARGET_ROLE_FORBIDDEN` (was `403 FORBIDDEN`) when a
+  API 1.44.0 — `403 TARGET_ROLE_FORBIDDEN` (was `403 FORBIDDEN`) when a
   non-SUPER_ADMIN targets a platform admin or an owner/admin of the owning
   organization, and `409 TARGET_IS_ORG_ADMIN` when a SUPER_ADMIN targets an
   owner/admin of the owning organization.

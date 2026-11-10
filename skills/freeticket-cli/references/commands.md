@@ -16,7 +16,8 @@ contract (`/api/admin`) with its own auth (see the Admin section below).
 | `ft login --account <name>` | Same, stored under `<name>`; an existing account with that name is replaced. |
 | `ft login --key ft_live_…` | CI/headless only: store a backend-issued token instead of the browser flow. |
 | `ft login --workspace <id>` | Pin the new account to one workspace. |
-| `ft whoami` | One account: its user, role and `workspaces[]`. Several: one row per account (account, email, name, workspaces); `--json` = array with `account` on each. |
+| `ft login --read-only` | Ask for a read-only key: the browser approval page comes with "Solo lectura" ticked, and the CLI refuses to save the key (exits 1, nothing stored) unless `/me` reports `scope: read` (approver unticked the box, `--key` is a write key, or the server is older than API 1.43.0). A read key gets `403` on every write. Combines with `--key`. |
+| `ft whoami` | One account: its user, role, `scope` (`read`/`write`) and `workspaces[]`. Several: one row per account (account, email, name, scope, workspaces); `--json` = array with `account` on each. |
 | `ft config` | Effective config: `apiUrl`, `activeAccount`, and every stored account with its credential masked (`--json` for scripts). |
 | `ft logout` | Removes the pinned account, or the only one. Several and none pinned → fails; use `--account <name>` or `--all`. |
 | `ft account list` | Stored accounts (`*` = pinned): name, apiUrl, pinned workspace, masked session. Alias `ft accounts`. |
@@ -144,7 +145,7 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft webhooks delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
 | `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
-| `ft staff delete <id>` | `--yes` to skip confirm. Revokes access to this workspace only; nobody can revoke themselves (`409`). As of API 1.43.0: only a SUPER_ADMIN can revoke a platform admin (global `SUPER_ADMIN`/`ADMIN`/`MINCULTURA`) or an `OWNER`/`ADMIN` of the organization that owns the workspace — anyone else gets `403 TARGET_ROLE_FORBIDDEN` (older APIs answered `403 FORBIDDEN`); a SUPER_ADMIN revoking an `OWNER`/`ADMIN` of the owning organization gets `409 TARGET_IS_ORG_ADMIN` and nothing changes, since they keep access through the organization | ADMIN |
+| `ft staff delete <id>` | `--yes` to skip confirm. Revokes access to this workspace only; nobody can revoke themselves (`409`). As of API 1.44.0: only a SUPER_ADMIN can revoke a platform admin (global `SUPER_ADMIN`/`ADMIN`/`MINCULTURA`) or an `OWNER`/`ADMIN` of the organization that owns the workspace — anyone else gets `403 TARGET_ROLE_FORBIDDEN` (older APIs answered `403 FORBIDDEN`); a SUPER_ADMIN revoking an `OWNER`/`ADMIN` of the owning organization gets `409 TARGET_IS_ORG_ADMIN` and nothing changes, since they keep access through the organization | ADMIN |
 | `ft content-posts create` | `--data` (`{type TEXT\|IMAGE\|ARTICLE, locked, title?, body?, content?, imageUrl?, eventId?, …}`); ARTICLE needs `title` + Markdown `body` | ADMIN |
 
 ## Service credentials (`ft api-keys …`)
