@@ -144,7 +144,7 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft webhooks delete <id>` | `--yes` to skip confirm | ADMIN |
 | `ft staff create` | `--data` (`{"email","role"}`) | ADMIN |
 | `ft staff set-role <id>` | `--data` (`{"role"}`) | ADMIN |
-| `ft staff delete <id>` | `--yes` to skip confirm. Revokes access to this workspace only; an ADMIN cannot revoke another admin (`403`) or itself (`409`) | ADMIN |
+| `ft staff delete <id>` | `--yes` to skip confirm. Revokes access to this workspace only; nobody can revoke themselves (`409`). As of API 1.43.0: only a SUPER_ADMIN can revoke a platform admin (global `SUPER_ADMIN`/`ADMIN`/`MINCULTURA`) or an `OWNER`/`ADMIN` of the organization that owns the workspace — anyone else gets `403 TARGET_ROLE_FORBIDDEN` (older APIs answered `403 FORBIDDEN`); a SUPER_ADMIN revoking an `OWNER`/`ADMIN` of the owning organization gets `409 TARGET_IS_ORG_ADMIN` and nothing changes, since they keep access through the organization | ADMIN |
 | `ft content-posts create` | `--data` (`{type TEXT\|IMAGE\|ARTICLE, locked, title?, body?, content?, imageUrl?, eventId?, …}`); ARTICLE needs `title` + Markdown `body` | ADMIN |
 
 ## Service credentials (`ft api-keys …`)

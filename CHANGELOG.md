@@ -9,6 +9,13 @@ file is for.
 
 ## [Unreleased]
 
+### Changed
+- **`freeticket-cli`**: `ft staff delete` documents the target-role ceiling of
+  API 1.43.0 — `403 TARGET_ROLE_FORBIDDEN` (was `403 FORBIDDEN`) when a
+  non-SUPER_ADMIN targets a platform admin or an owner/admin of the owning
+  organization, and `409 TARGET_IS_ORG_ADMIN` when a SUPER_ADMIN targets an
+  owner/admin of the owning organization.
+
 ## [0.3.0] - 2026-10-20
 
 ### Changed
