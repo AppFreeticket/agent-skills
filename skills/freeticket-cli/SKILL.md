@@ -40,7 +40,7 @@ npm install -g @freeticket/cli@latest && ft whoami
 > version (e.g. before the device-flow login) breaks otherwise.
 >
 > This skill documents **`ft` ≥ 0.11.1** (skill revision 2026-10-20, contract
-> B2B 1.20.0 / admin 1.5.1). A
+> B2B 1.20.0 / admin 1.7.0). A
 > globally-installed `ft` that's behind prints an `⚠ Update available` line on
 > *stderr* (checked at most once a day); when you see it, tell the user to run
 > `npm i -g @freeticket/cli@latest`. `npx …@latest` always runs the newest. The

@@ -1,7 +1,7 @@
 # Tool inventory — `@freeticket/mcp` v0.15.0
 
-117 tools, one per contract operation (B2B 88 · superadmin 23 · public 6).
-Contracts: B2B `1.20.0` · superadmin `1.5.1` · public `0.9.1`. `?` marks an optional argument.
+124 tools, one per contract operation (B2B 88 · superadmin 30 · public 6).
+Contracts: B2B `1.20.0` · superadmin `1.7.0` · public `0.9.1`. `?` marks an optional argument.
 **▣** = renders through the MCP Apps view (table or KPI tiles in the host).
 **⚠** = `destructiveHint`: confirm with the human and quote what will be
 affected before calling.
@@ -208,6 +208,24 @@ Cross-tenant. Everything here affects other people's workspaces.
 | `admin_platform_plans_update` | `id` + any of the above, `sortOrder?` | |
 | ▣ `admin_feature_flags_list` | `key?` | |
 | `admin_feature_flags_set` | `key scope scopeId? enabled` | |
+
+### Master CRM (read-only) — contract admin `1.7.0`
+
+Email / WhatsApp campaigns to buyers across every workspace. **Read-only in the
+MCP**: launching a campaign, sending or stopping batches and cancelling are
+**not** tools — they send real messages, so they live only in the CLI
+(`ft admin crm launch|batches|campaigns cancel`, which confirm before writing)
+or the admin panel.
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| ▣ `admin_crm_campaigns` | `channel? status? limit?` | `channel`: `EMAIL\|WHATSAPP`; `status`: `SENT\|FAILED\|DENIED\|PROCESSING\|APPROVED\|SCHEDULED\|CANCELLED`; `limit` 1–100, default 50 |
+| `admin_crm_campaigns_get` | `id` | Filter, sender, counters and batches |
+| `admin_crm_audience_preview` | `filter sender?` | Counts the audience of a v2 filter (`{ version: 2, scope, include, except }`) without sending or creating anything: counters per channel, masked sample of up to 10, who can sign, days at the WhatsApp quota. `sender`: `{ kind: "freeticket" }` or `{ kind: "organization", workspaceId }`. Invalid filter → 422 with `error.details[].path`; too large → 413 |
+| ▣ `admin_crm_quota` | — | Daily WhatsApp quota and batches already committed |
+| `admin_crm_options` | — | Cities, genre/format facets, membership plans and templates for a filter |
+| ▣ `admin_crm_events` | `purpose query? senderWorkspaceId?` | `purpose`: `scope\|except\|promote` (`promote` = published only; with `senderWorkspaceId`, only that organization's) |
+| `admin_crm_event_dates` | `eventIds` | 1–50 show ids → their dates, to narrow a condition to specific functions |
 
 ---
 
