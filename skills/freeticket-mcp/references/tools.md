@@ -45,7 +45,7 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `events_create` | `name slug description? venueId? dates` | `dates`: at least one `{startsAt, endsAt?, timezone}` |
 | `events_update` | `id name? description? venueId? coverImageUrl?` | |
 | `events_publish` | `id` | Makes it visible in the public catalogue |
-| ⚠ `events_cancel` | `id` | Cancels the event and all its dates; keeps sales and tickets, refunds nothing (that is `sales_refund`). Idempotent |
+| ⚠ `events_cancel` | `id` | Cancels the event and all its dates; keeps sales and tickets, refunds nothing (refunds are made in the dashboard). Idempotent |
 | ⚠ `events_delete` | `id` | |
 | ▣ `event_dates_list` | `eventId` | |
 | `event_dates_create` | `eventId startsAt timezone? label? endsAt? doorsOpenAt? venueId?` | `timezone` defaults to `America/Bogota` |
@@ -76,7 +76,6 @@ The agent never touches payment data: hand the human the `checkoutUrl`.
 | `sales_attempts` | `id` | Payment attempt history, newest first (approved, declined, refunded): why a sale did not go through |
 | `sales_create` | `buyer items channel comp notes?` | Comps and programmatic orders — **not idempotent, see below** |
 | ⚠ `sales_cancel` | `id acknowledge_open_payment?` | The flag is required when the payment is still open at the gateway |
-| ⚠ `sales_refund` | `id acknowledge_manual?` | The flag confirms the money goes back by hand, outside the gateway |
 
 ### Memberships
 

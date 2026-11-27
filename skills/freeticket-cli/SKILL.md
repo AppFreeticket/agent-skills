@@ -1,6 +1,6 @@
 ---
 name: freeticket-cli
-description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish or cancel events; create/cancel/refund sales (whole or per ticket) and read their payment attempts; check tickets in at the door, resend QRs and reassign tickets to another date; list a sale's tickets, a plan's subscribers, cancel subscriptions; publish content posts; run reports (summary, by-event, timeseries, inventory, per-function financials, CFO reconciliation); read settlements paid to the organizer; mint headless service API keys; sign up and create your own workspace; and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
+description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cli`) to operate a workspace from the terminal — log in through the browser (device flow), list/inspect AND create/update/delete events, dates, ticket types, sales, membership plans, venues, staff, discount codes and webhooks; publish or cancel events; create/cancel sales and read their payment attempts; check tickets in at the door, resend QRs and reassign tickets to another date; list a sale's tickets, a plan's subscribers, cancel subscriptions; publish content posts; run reports (summary, by-event, timeseries, inventory, per-function financials, CFO reconciliation); read settlements paid to the organizer; mint headless service API keys; sign up and create your own workspace; and export buyers/attendees/subscribers to CSV. Superadmin (`ft admin …`) manages tenants, users, platform plans, feature flags and impersonation. Use it when the user wants to read OR mutate their FreeTicket account from the terminal, run `ft <command>`, automate with `--json`/`jq` or `--csv`, manage the session/workspace, send feedback/suggestions (filed as GitHub issues on the right repo), or when another skill needs live data or actions on the B2B v1 backend.
 ---
 
 # FreeTicket CLI (`ft`)
@@ -9,13 +9,13 @@ description: Drive the official FreeTicket CLI (binary `ft`, npm `@freeticket/cl
 generated from its OpenAPI 3.1 contract, so every endpoint exists as a command.
 **Reads and writes both work**: every resource has `list`/`get` plus
 `create`/`update`/`delete` and resource actions (`events publish`/`cancel`,
-`sales cancel`/`refund`/`attempts`, `tickets reassign`, `staff set-role`), and every list takes `--csv`. The CLI
+`sales cancel`/`attempts`, `tickets reassign`, `staff set-role`), and every list takes `--csv`. The CLI
 mirrors what the web app does — anything you can do on the page, you can do here.
 
 ## When to use this skill
 
 - The user wants real data: "how many sales do I have?", "list my events", "export buyers".
-- The user wants to **change** something: "create an event", "publish it", "refund sale X", "raise a ticket-type price", "suspend a tenant".
+- The user wants to **change** something: "create an event", "publish it", "raise a ticket-type price", "suspend a tenant".
 - You need to run `ft ...` or automate a report/mutation for `jq`/scripts.
 - Manage the session (`ft login`/`logout`/`config`), several accounts (`ft account`), or narrow to one workspace.
 - Another skill (e.g. `freeticket-eventos`) needs live data to audit or an action to perform.
@@ -120,7 +120,7 @@ Narrow it when the user is talking about one of them:
 or `ft logout --account <name>` drops one, `ft logout --all` drops every one.
 
 **Commands that are not lists need exactly one account** — `get`, `create`,
-`update`, `delete`, actions (`publish`, `cancel`, `refund`, `tickets checkin`),
+`update`, `delete`, actions (`publish`, `cancel`, `tickets checkin`),
 `reports summary` (KPIs are not summed across tenants). With several accounts
 stored and none pinned they fail with `Several accounts are stored (…)`: ask the
 user which one (or take it from the `account` column of the list you just
@@ -138,12 +138,12 @@ read) and pass `--account <name>`. **Never guess the account on a mutation.**
 | `ft workspace create --name <n> --slug <s>` | Create your own workspace; the caller becomes its ADMIN (plan quota applies; `409 ALREADY_HAS_ACCESS` if they are staff elsewhere) | — |
 | `ft config` · `ft logout` | Show config (masked sessions) · remove the pinned/only account (`--account <name>`, `--all`) | — |
 | `ft events list\|get\|create\|update\|delete\|publish` | Events + lifecycle (`list --q --status --with-total`) | VIEWER read / ADMIN write |
-| `ft events cancel <id>` | Cancel the event and all its dates; **keeps** sales and tickets and refunds nothing (that is `sales refund`). Asks first | ADMIN |
+| `ft events cancel <id>` | Cancel the event and all its dates; **keeps** sales and tickets and refunds nothing (refunds are made in the FreeTicket dashboard). Asks first | ADMIN |
 | `ft event-dates list\|create <eventId>` · `update\|delete <eventId> <dateId>` | Dates (sessions) of an event | ADMIN write |
 | `ft ticket-types list\|get\|create\|update\|delete` | Ticket types (`--event-date-id`) | ADMIN write |
 | `ft sales list\|get` | Sales; filters `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` | STAFF |
 | `ft sales create` | Create a sale/order — comps & programmatic (`--data <json>`) | ADMIN |
-| `ft sales cancel\|refund <id>` | Cancel / refund (`refund --data '{"items":["…"]}'` refunds only those tickets; `block_seats` keeps refunded numbered seats off sale; `--data '{"acknowledge_open_payment":true}'` on cancel when the payment is still open, `acknowledge_manual` on an out-of-gateway refund) | ADMIN |
+| `ft sales cancel <id>` | Cancel (`--data '{"acknowledge_open_payment":true}'` when the payment is still open). Not a refund: refunds are made in the FreeTicket dashboard | ADMIN |
 | `ft sales tickets\|attempts <id>` | The individual tickets/attendees of a sale · its payment attempt history (declines, approvals, refunds: why it did not go through) | STAFF |
 | `ft tickets access\|checkin\|resend <code>` | Door: read access status · admit (idempotent) · resend QR email | STAFF read / ADMIN resend |
 | `ft tickets reassign <code>` | Move a sold ticket to another date and/or type (`--data '{"eventDateId":"…"}'`, optional `ticketTypeId`, `seatLabel`); charges/refunds no price difference | ADMIN |
@@ -268,9 +268,8 @@ ft events create --data @event.json --json | jq -r '.id' | xargs ft events publi
 # edit a ticket-type price (partial PATCH)
 ft ticket-types update tt_123 --data '{"price": 50000}'
 
-# partial refund: only some tickets (item ids = the `id` of `ft sales tickets`)
+# the individual tickets of a sale
 ft sales tickets sale_123 --json | jq -r '.[].id'
-ft sales refund sale_123 --data '{"items":["itm_1"]}'
 
 # why didn't this sale go through? (declines, approvals, refunds)
 ft sales attempts sale_123 --json

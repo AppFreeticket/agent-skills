@@ -9,6 +9,12 @@ file is for.
 
 ## [Unreleased]
 
+### Removed
+- Refunds are no longer taught by the plugin, after OpenAI's plugin review
+  (5.1-5.2) rejected them: `freeticket-mcp` drops `sales_refund` (the MCP no
+  longer exposes it) and `freeticket-cli` drops `ft sales refund`. Both
+  skills send the human to the FreeTicket dashboard. Plugin 0.3.1.
+
 ### Changed
 - **`freeticket-cli`**: `ft staff delete` documents the target-role ceiling of
   API 1.43.0 — `403 TARGET_ROLE_FORBIDDEN` (was `403 FORBIDDEN`) when a
