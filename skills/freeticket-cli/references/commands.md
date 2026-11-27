@@ -62,7 +62,7 @@ minimum role; insufficient → `403`.
 | `ft ticket-types get <id>` | — | VIEWER |
 | `ft sales list` | `--status` `--channel` `--event` `--event-date` `--reference` `--buyer` `--from` `--to` `--limit` `--cursor` | STAFF |
 | `ft sales get <id>` | — | STAFF |
-| `ft sales tickets <id>` | — (individual tickets/attendees of a sale; their `id` is what `refund --data '{"items":[…]}'` takes) | STAFF |
+| `ft sales tickets <id>` | — (individual tickets/attendees of a sale) | STAFF |
 | `ft sales attempts <id>` | — (payment attempt history, newest first: declines, approvals, refunds) | STAFF |
 | `ft tickets access <code>` | — (access status; does not admit) | STAFF |
 | `ft plans list` · `get <id>` | `--limit` `--cursor` | VIEWER |
@@ -131,7 +131,6 @@ matching endpoint in the OpenAPI contract — when unsure, check the spec, don't
 | `ft venues create\|update <id>\|delete <id>` | `--data` (create/update) | ADMIN |
 | `ft sales create` | `--data` (`{buyer:{name,email,phone?}, items:[{ticketTypeId,quantity}], channel?, comp?, notes?}`) | ADMIN |
 | `ft sales cancel <id>` | `--data '{"acknowledge_open_payment":true}'` when the payment is still open at the gateway | ADMIN |
-| `ft sales refund <id>` | `--data` optional: `{"items":["…"]}` refunds only those tickets (prorated; MercadoPago or cash only, `409 GATEWAY_REFUND_NOT_SUPPORTED` otherwise), `{"block_seats":true}` keeps refunded numbered seats off sale, `{"acknowledge_manual":true}` when the money goes back by hand. Checked-in tickets answer `409 ITEM_ALREADY_CHECKED_IN`, even on a full refund; `503 GATEWAY_REFUND_PENDING` is safe to repeat | ADMIN |
 | `ft tickets checkin <code>` | — (idempotent; re-running never double-admits) | STAFF |
 | `ft tickets resend <code>` | — (resends the sale's confirmation email/QR) | ADMIN |
 | `ft tickets reassign <code>` | `--data` (`{eventDateId?, ticketTypeId?, seatLabel?}`); with only `eventDateId` the type is matched by name on the new date (`422` if ambiguous: pass `ticketTypeId`). No price difference charged or refunded | ADMIN |

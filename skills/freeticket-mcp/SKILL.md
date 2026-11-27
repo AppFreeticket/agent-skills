@@ -103,10 +103,12 @@ superadmin session.
 ## Working rules
 
 **Reads are free, writes are not.** Destructive tools (`*_delete`,
-`events_cancel`, `sales_refund`, `sales_cancel`, `customer_order_release`,
+`events_cancel`, `sales_cancel`, `customer_order_release`,
 `admin_workspaces_suspend`, `admin_impersonate`)
 carry `destructiveHint` and say so in their description. Confirm with the human
 before calling one, and quote what will be affected — id, name, amount.
+Refunds are not available over MCP: send the human to the FreeTicket
+dashboard.
 
 **Never invent an endpoint.** These tools are generated from the contract. If a
 capability is missing, it is missing upstream in `free-admin`, and the fix is to
